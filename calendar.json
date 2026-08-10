@@ -11,6 +11,16 @@
           "date": 1,
           "title": "Nepali New Year",
           "type": "holiday"
+        },
+          {
+          "date": 5,
+          "title": "Nepali Loshar",
+          "type": "festival"
+        },
+        {
+          "date": 9,
+          "title": "Darshan",
+          "type": "event"
         }
       ]
     },
