@@ -2,7 +2,18 @@
   "year": 2083,
   "startDate": "2026-04-14",
   "months": [
-    { "month": 1, "name": "Baisakh", "days": 31 },
+    {
+      "month": 1,
+      "name": "Baisakh",
+      "days": 31,
+      "events": [
+        {
+          "date": 1,
+          "title": "Nepali New Year",
+          "type": "holiday"
+        }
+      ]
+    },
     { "month": 2, "name": "Jestha", "days": 31 },
     { "month": 3, "name": "Ashadh", "days": 32 },
     { "month": 4, "name": "Shrawan", "days": 31 },
