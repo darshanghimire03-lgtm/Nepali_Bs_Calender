@@ -1,0 +1,18 @@
+{
+  "year": 2083,
+  "startDate": "2026-04-14",
+  "months": [
+    { "month": 1, "name": "Baisakh", "days": 31 },
+    { "month": 2, "name": "Jestha", "days": 31 },
+    { "month": 3, "name": "Ashadh", "days": 32 },
+    { "month": 4, "name": "Shrawan", "days": 31 },
+    { "month": 5, "name": "Bhadra", "days": 31 },
+    { "month": 6, "name": "Ashwin", "days": 31 },
+    { "month": 7, "name": "Kartik", "days": 30 },
+    { "month": 8, "name": "Mangsir", "days": 29 },
+    { "month": 9, "name": "Poush", "days": 30 },
+    { "month": 10, "name": "Magh", "days": 29 },
+    { "month": 11, "name": "Falgun", "days": 30 },
+    { "month": 12, "name": "Chaitra", "days": 30 }
+  ]
+}
