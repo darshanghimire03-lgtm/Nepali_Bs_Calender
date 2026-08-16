@@ -95,9 +95,6 @@
     .cell.empty { background: transparent; border: none; }
     .cell.today { background: #4C8DFF; border-color: #4C8DFF; color: #FFFFFF; }
     .cell.saturday:not(.today) { background: #F4F6FB; border-color: #E53946; color: #E53946; }
-    .cell.holiday:not(.today) { background: #F4F6FB; border-color: #E53946; color: #E53946; }
-    .cell.festival:not(.today) { background: #F4F6FB; border-color: #8B5CF6; color: #8B5CF6; }
-    .cell.event-day:not(.today) { background: #F4F6FB; border-color: #4C8DFF; color: #4C8DFF; }
     .eng-date {
         position: absolute;
         bottom: 3px;
@@ -106,84 +103,13 @@
         font-weight: normal;
         color: #8A93A8;
     }
-    .cell.today .eng-date, .cell.saturday .eng-date, .cell.holiday .eng-date, .cell.festival .eng-date, .cell.event-day .eng-date { color: inherit; opacity: 0.85; }
-    .events-header {
-        display: flex;
-        align-items: center;
-        padding: 24px 20px 10px 20px;
-    }
-    .events-title {
-        flex: 1;
-        font-size: 18px;
-        font-weight: bold;
-        color: #17223B;
-    }
-    .view-all {
-        font-size: 14px;
-        font-weight: bold;
-        color: #8B5CF6;
-        padding: 6px;
-    }
-    .events-list {
-        padding: 0 20px;
-    }
-    .event-row {
-        display: flex;
-        align-items: center;
-        background: #FFFFFF;
-        border-radius: 16px;
-        padding: 14px;
-        margin-bottom: 14px;
-        box-shadow: 0 2px 6px rgba(23,34,59,0.06);
-    }
-    .event-date-box {
-        width: 52px;
-        height: 52px;
-        min-width: 52px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-direction: column;
-        color: #FFFFFF;
-        font-size: 12px;
-        font-weight: bold;
-        text-align: center;
-        margin-right: 14px;
-        line-height: 1.2;
-    }
-    .event-text { flex: 1; }
-    .event-title { font-size: 15px; font-weight: bold; color: #17223B; }
-    .event-type { font-size: 13px; font-weight: normal; margin-top: 2px; }
-    .event-chevron {
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 16px;
-    }
-    .empty-events {
-        font-size: 13px;
-        color: #8A93A8;
-        padding: 4px 0 16px 0;
-    }
+    .cell.today .eng-date, .cell.saturday .eng-date { color: inherit; opacity: 0.85; }
     .loading-text {
         font-size: 13px;
         color: #8A93A8;
         padding: 20px;
         text-align: center;
     }
-    .bg-holiday { background: #E53946; }
-    .bg-festival { background: #8B5CF6; }
-    .bg-event { background: #4C8DFF; }
-    .fade-holiday { background: #E5394622; color: #E53946; }
-    .fade-festival { background: #8B5CF622; color: #8B5CF6; }
-    .fade-event { background: #4C8DFF22; color: #4C8DFF; }
-    .text-holiday { color: #E53946; }
-    .text-festival { color: #8B5CF6; }
-    .text-event { color: #4C8DFF; }
 </style>
 </head>
 <body>
@@ -208,139 +134,76 @@
             <div class="weekday">Fri</div>
             <div class="weekday sat">Sat</div>
         </div>
-        <div class="grid" id="calendarGrid"></div>
-    </div>
-
-    <div class="events-header">
-        <div class="events-title" id="eventsHeader">This Month's Events</div>
-        <div class="view-all" id="viewAllBtn" onclick="onViewAll()" style="display:none;">View All</div>
-    </div>
-    <div class="events-list" id="eventsList">
-        <div class="loading-text" id="loadingText">Loading calendar...</div>
+        <div class="grid" id="calendarGrid">
+            <div class="loading-text" id="loadingText">Loading calendar...</div>
+        </div>
     </div>
 
 <script>
-    var CALENDAR_JSON_URL = "https://raw.githubusercontent.com/darshanghimire03-lgtm/Nepali_Bs_Calender/main/calendar.json";
+    var CALENDAR_JSON_URL = "https://raw.githubusercontent.com/darshanghimire03-lgtm/Nepali_Bs_Calender/main/2083.json";
 
-    var calendarData = null;
-    var startDateMillis = 0;
+    var MONTH_NAMES = [
+        "Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj",
+        "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"
+    ];
+
+    var dateEntries = [];
+    var byNepaliDate = {};
+
     var displayedYear = 0;
     var displayedMonth = 1;
+
     var todayYear = 0;
     var todayMonth = 0;
     var todayDay = 0;
 
-    function typeLabel(type) {
-        if (type === 'holiday') return 'Holiday';
-        if (type === 'festival') return 'Festival';
-        return 'Event';
+    function parseNepaliDate(str) {
+        var parts = str.split('-');
+        return { year: parseInt(parts[0], 10), month: parseInt(parts[1], 10), day: parseInt(parts[2], 10) };
     }
 
-    function daysInMonthForYear(month) {
-        if (!calendarData || !calendarData.months.length) return 30;
-        var idx = Math.min(Math.max(month - 1, 0), calendarData.months.length - 1);
-        return calendarData.months[idx].days;
+    function daysInMonthForYear(year, month) {
+        var count = 0;
+        for (var i = 0; i < dateEntries.length; i++) {
+            var d = parseNepaliDate(dateEntries[i].nepali_date);
+            if (d.year === year && d.month === month) count++;
+        }
+        return count;
     }
 
     function monthName(month) {
-        if (!calendarData || !calendarData.months.length) return 'Month ' + month;
-        var idx = Math.min(Math.max(month - 1, 0), calendarData.months.length - 1);
-        return calendarData.months[idx].name;
+        var idx = Math.min(Math.max(month - 1, 0), MONTH_NAMES.length - 1);
+        return MONTH_NAMES[idx];
     }
 
-    function eventsForDay(month, day) {
-        if (!calendarData || !calendarData.months.length) return [];
-        var idx = Math.min(Math.max(month - 1, 0), calendarData.months.length - 1);
-        var events = calendarData.months[idx].events || [];
-        var result = [];
-        for (var i = 0; i < events.length; i++) {
-            if (events[i].date === day) result.push(events[i]);
-        }
-        return result;
+    function entryFor(year, month, day) {
+        var key = year + '-' + pad2(month) + '-' + pad2(day);
+        return byNepaliDate[key] || null;
     }
 
-    function eventsInMonth(month) {
-        if (!calendarData || !calendarData.months.length) return [];
-        var idx = Math.min(Math.max(month - 1, 0), calendarData.months.length - 1);
-        var events = (calendarData.months[idx].events || []).slice();
-        events.sort(function(a, b) { return a.date - b.date; });
-        return events;
+    function pad2(n) {
+        return n < 10 ? '0' + n : '' + n;
     }
 
-    function msPerDay() {
-        return 24 * 60 * 60 * 1000;
+    function engDayFor(year, month, day) {
+        var entry = entryFor(year, month, day);
+        if (!entry) return '';
+        var parts = entry.english_date.split('-');
+        return parseInt(parts[2], 10).toString();
     }
 
-    function bsDateFromMillis(millis) {
-        var remainingDays = Math.floor((millis - startDateMillis) / msPerDay());
-        var year = calendarData.year;
-        var month = 1;
-        var day = 1 + remainingDays;
-
-        var safety = 0;
-        while (day > daysInMonthForYear(month) && safety < 5000) {
-            day -= daysInMonthForYear(month);
-            month += 1;
-            if (month > 12) { month = 1; year += 1; }
-            safety++;
-        }
-        safety = 0;
-        while (day < 1 && safety < 5000) {
-            month -= 1;
-            if (month < 1) { month = 12; year -= 1; }
-            day += daysInMonthForYear(month);
-            safety++;
-        }
-
-        return { year: year, month: month, day: day };
-    }
-
-    function gregorianMillisFor(bsYear, bsMonth, bsDay) {
-        var offsetDays = 0;
-
-        if (bsYear === calendarData.year) {
-            for (var i = 0; i < calendarData.months.length; i++) {
-                var m = calendarData.months[i];
-                if (m.month < bsMonth) offsetDays += m.days;
-                else break;
-            }
-        } else if (bsYear < calendarData.year) {
-            var y = bsYear, mo = bsMonth;
-            while (y !== calendarData.year || mo !== 1) {
-                offsetDays -= daysInMonthForYear(mo);
-                mo -= 1;
-                if (mo < 1) { mo = 12; y += 1; }
-            }
-        } else {
-            var y2 = calendarData.year, mo2 = 1;
-            while (y2 !== bsYear || mo2 !== bsMonth) {
-                offsetDays += daysInMonthForYear(mo2);
-                mo2 += 1;
-                if (mo2 > 12) { mo2 = 1; y2 += 1; }
-            }
-        }
-
-        offsetDays += (bsDay - 1);
-        return startDateMillis + (offsetDays * msPerDay());
-    }
-
-    function firstWeekdayOfMonth(bsYear, bsMonth) {
-        var millis = gregorianMillisFor(bsYear, bsMonth, 1);
-        var d = new Date(millis);
+    function weekdayFor(year, month, day) {
+        var entry = entryFor(year, month, day);
+        if (!entry) return 0;
+        var d = new Date(entry.english_date + 'T00:00:00Z');
         return d.getUTCDay();
-    }
-
-    function engDateFor(bsYear, bsMonth, bsDay) {
-        var millis = gregorianMillisFor(bsYear, bsMonth, bsDay);
-        var d = new Date(millis);
-        return d.getUTCDate().toString();
     }
 
     function renderMonth() {
         document.getElementById('monthLabel').textContent = monthName(displayedMonth) + ' ' + displayedYear;
 
-        var totalDays = daysInMonthForYear(displayedMonth);
-        var firstDay = firstWeekdayOfMonth(displayedYear, displayedMonth);
+        var totalDays = daysInMonthForYear(displayedYear, displayedMonth);
+        var firstDay = weekdayFor(displayedYear, displayedMonth, 1);
         var grid = document.getElementById('calendarGrid');
         grid.innerHTML = '';
 
@@ -359,40 +222,19 @@
                     var day = dayCounter;
                     var isToday = (displayedYear === todayYear && displayedMonth === todayMonth && day === todayDay);
                     var isSaturday = (c === 6);
-                    var events = eventsForDay(displayedMonth, day);
-                    grid.appendChild(buildDayCell(day, isToday, isSaturday, events));
+                    grid.appendChild(buildDayCell(day, isToday, isSaturday));
                     dayCounter++;
                 }
             }
         }
-
-        renderEventsList();
     }
 
-    function buildDayCell(day, isToday, isSaturday, events) {
+    function buildDayCell(day, isToday, isSaturday) {
         var cell = document.createElement('div');
 
-        var holidayEvent = null;
-        var festivalEvent = null;
-        var plainEvent = null;
-        for (var i = 0; i < events.length; i++) {
-            if (events[i].type === 'holiday' && !holidayEvent) holidayEvent = events[i];
-            else if (events[i].type === 'festival' && !festivalEvent) festivalEvent = events[i];
-            else if (!plainEvent) plainEvent = events[i];
-        }
-
         var classes = 'cell';
-        if (isToday) {
-            classes += ' today';
-        } else if (holidayEvent) {
-            classes += ' holiday';
-        } else if (festivalEvent) {
-            classes += ' festival';
-        } else if (plainEvent) {
-            classes += ' event-day';
-        } else if (isSaturday) {
-            classes += ' saturday';
-        }
+        if (isToday) classes += ' today';
+        else if (isSaturday) classes += ' saturday';
         cell.className = classes;
 
         var numSpan = document.createElement('span');
@@ -401,74 +243,10 @@
 
         var engSpan = document.createElement('span');
         engSpan.className = 'eng-date';
-        engSpan.textContent = engDateFor(displayedYear, displayedMonth, day);
+        engSpan.textContent = engDayFor(displayedYear, displayedMonth, day);
         cell.appendChild(engSpan);
 
-        cell.onclick = function() {
-            if (events.length > 0) {
-                var msg = events.map(function(e) { return typeLabel(e.type) + ': ' + e.title; }).join('\n');
-                alert(msg);
-            }
-        };
-
         return cell;
-    }
-
-    function renderEventsList() {
-        var container = document.getElementById('eventsList');
-        container.innerHTML = '';
-        var monthEvents = eventsInMonth(displayedMonth);
-        var viewAllBtn = document.getElementById('viewAllBtn');
-
-        document.getElementById('eventsHeader').textContent = "This Month's Events";
-
-        if (monthEvents.length === 0) {
-            viewAllBtn.style.display = 'none';
-            var empty = document.createElement('div');
-            empty.className = 'empty-events';
-            empty.textContent = 'No holidays, festivals, or events this month';
-            container.appendChild(empty);
-            return;
-        }
-
-        viewAllBtn.style.display = 'block';
-
-        for (var i = 0; i < monthEvents.length; i++) {
-            container.appendChild(buildEventRow(monthEvents[i]));
-        }
-    }
-
-    function buildEventRow(event) {
-        var row = document.createElement('div');
-        row.className = 'event-row';
-
-        var dateBox = document.createElement('div');
-        dateBox.className = 'event-date-box bg-' + event.type;
-        dateBox.innerHTML = event.date + '<br>' + monthName(displayedMonth);
-        row.appendChild(dateBox);
-
-        var textWrap = document.createElement('div');
-        textWrap.className = 'event-text';
-        var titleDiv = document.createElement('div');
-        titleDiv.className = 'event-title';
-        titleDiv.textContent = event.title;
-        var typeDiv = document.createElement('div');
-        typeDiv.className = 'event-type text-' + event.type;
-        typeDiv.textContent = typeLabel(event.type);
-        textWrap.appendChild(titleDiv);
-        textWrap.appendChild(typeDiv);
-        row.appendChild(textWrap);
-
-        var chevron = document.createElement('div');
-        chevron.className = 'event-chevron fade-' + event.type;
-        chevron.innerHTML = '&#10095;';
-        row.appendChild(chevron);
-
-        row.onclick = function() {
-            alert(typeLabel(event.type) + ': ' + event.title);
-        };
-
-        return row;
     }
 
     function onPrevMonth() {
@@ -489,31 +267,40 @@
         renderMonth();
     }
 
-    function onViewAll() {
-        alert('Full events list coming soon');
-    }
-
     function showError(message) {
         document.getElementById('monthLabel').textContent = 'Error';
-        var container = document.getElementById('eventsList');
-        container.innerHTML = '';
+        var grid = document.getElementById('calendarGrid');
+        grid.innerHTML = '';
         var errorDiv = document.createElement('div');
-        errorDiv.className = 'empty-events';
+        errorDiv.className = 'loading-text';
         errorDiv.textContent = message;
-        container.appendChild(errorDiv);
+        grid.appendChild(errorDiv);
+    }
+
+    function findTodayEntry() {
+        var todayStr = new Date().toISOString().split('T')[0];
+        for (var i = 0; i < dateEntries.length; i++) {
+            if (dateEntries[i].english_date === todayStr) return dateEntries[i];
+        }
+        return dateEntries.length > 0 ? dateEntries[0] : null;
     }
 
     function startCalendar() {
-        if (!calendarData || !calendarData.months || calendarData.months.length === 0) {
+        if (dateEntries.length === 0) {
             showError('Calendar data unavailable');
             return;
         }
 
-        var todayMillis = Date.now();
-        var today = bsDateFromMillis(todayMillis);
-        todayYear = today.year;
-        todayMonth = today.month;
-        todayDay = today.day;
+        var todayEntry = findTodayEntry();
+        if (!todayEntry) {
+            showError('Calendar data unavailable');
+            return;
+        }
+
+        var todayParsed = parseNepaliDate(todayEntry.nepali_date);
+        todayYear = todayParsed.year;
+        todayMonth = todayParsed.month;
+        todayDay = todayParsed.day;
 
         displayedYear = todayYear;
         displayedMonth = todayMonth;
@@ -531,8 +318,11 @@
             if (xhr.readyState === 4) {
                 if (xhr.status === 200) {
                     try {
-                        calendarData = JSON.parse(xhr.responseText);
-                        startDateMillis = Date.parse(calendarData.startDate + 'T00:00:00Z');
+                        dateEntries = JSON.parse(xhr.responseText);
+                        byNepaliDate = {};
+                        for (var i = 0; i < dateEntries.length; i++) {
+                            byNepaliDate[dateEntries[i].nepali_date] = dateEntries[i];
+                        }
                         startCalendar();
                     } catch (e) {
                         showError('Failed to parse calendar data');
