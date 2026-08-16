@@ -94,8 +94,10 @@
     }
     .cell.empty { background: transparent; border: none; }
     .cell.today { background: #4C8DFF; border-color: #4C8DFF; color: #FFFFFF; }
-    .cell.holiday { background: #E5394622; border-color: #E53946; color: #E53946; }
-    .cell.saturday:not(.holiday):not(.today) { border-color: #E53946; color: #E53946; }
+    .cell.saturday:not(.today) { background: #F4F6FB; border-color: #E53946; color: #E53946; }
+    .cell.holiday:not(.today) { background: #F4F6FB; border-color: #E53946; color: #E53946; }
+    .cell.festival:not(.today) { background: #F4F6FB; border-color: #8B5CF6; color: #8B5CF6; }
+    .cell.event-day:not(.today) { background: #F4F6FB; border-color: #4C8DFF; color: #4C8DFF; }
     .eng-date {
         position: absolute;
         bottom: 3px;
@@ -104,18 +106,7 @@
         font-weight: normal;
         color: #8A93A8;
     }
-    .cell.today .eng-date, .cell.holiday .eng-date, .cell.saturday .eng-date { color: inherit; opacity: 0.85; }
-    .dot {
-        position: absolute;
-        top: 5px;
-        right: 5px;
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-    }
-    .dot.holiday { background: #E53946; }
-    .dot.festival { background: #8B5CF6; }
-    .dot.event { background: #4C8DFF; }
+    .cell.today .eng-date, .cell.saturday .eng-date, .cell.holiday .eng-date, .cell.festival .eng-date, .cell.event-day .eng-date { color: inherit; opacity: 0.85; }
     .events-header {
         display: flex;
         align-items: center;
@@ -380,15 +371,28 @@
 
     function buildDayCell(day, isToday, isSaturday, events) {
         var cell = document.createElement('div');
+
         var holidayEvent = null;
+        var festivalEvent = null;
+        var plainEvent = null;
         for (var i = 0; i < events.length; i++) {
-            if (events[i].type === 'holiday') { holidayEvent = events[i]; break; }
+            if (events[i].type === 'holiday' && !holidayEvent) holidayEvent = events[i];
+            else if (events[i].type === 'festival' && !festivalEvent) festivalEvent = events[i];
+            else if (!plainEvent) plainEvent = events[i];
         }
 
         var classes = 'cell';
-        if (isToday) classes += ' today';
-        else if (holidayEvent) classes += ' holiday';
-        else if (isSaturday) classes += ' saturday';
+        if (isToday) {
+            classes += ' today';
+        } else if (holidayEvent) {
+            classes += ' holiday';
+        } else if (festivalEvent) {
+            classes += ' festival';
+        } else if (plainEvent) {
+            classes += ' event-day';
+        } else if (isSaturday) {
+            classes += ' saturday';
+        }
         cell.className = classes;
 
         var numSpan = document.createElement('span');
@@ -399,12 +403,6 @@
         engSpan.className = 'eng-date';
         engSpan.textContent = engDateFor(displayedYear, displayedMonth, day);
         cell.appendChild(engSpan);
-
-        if (events.length > 0) {
-            var dot = document.createElement('span');
-            dot.className = 'dot ' + events[0].type;
-            cell.appendChild(dot);
-        }
 
         cell.onclick = function() {
             if (events.length > 0) {
