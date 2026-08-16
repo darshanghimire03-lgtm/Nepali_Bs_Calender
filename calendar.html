@@ -178,6 +178,12 @@
         color: #8A93A8;
         padding: 4px 0 16px 0;
     }
+    .loading-text {
+        font-size: 13px;
+        color: #8A93A8;
+        padding: 20px;
+        text-align: center;
+    }
     .bg-holiday { background: #E53946; }
     .bg-festival { background: #8B5CF6; }
     .bg-event { background: #4C8DFF; }
@@ -218,10 +224,15 @@
         <div class="events-title" id="eventsHeader">This Month's Events</div>
         <div class="view-all" id="viewAllBtn" onclick="onViewAll()" style="display:none;">View All</div>
     </div>
-    <div class="events-list" id="eventsList"></div>
+    <div class="events-list" id="eventsList">
+        <div class="loading-text" id="loadingText">Loading calendar...</div>
+    </div>
 
 <script>
+    var CALENDAR_JSON_URL = "https://raw.githubusercontent.com/darshanghimire03-lgtm/Nepali_Bs_Calender/main/calendar.json";
+
     var calendarData = null;
+    var startDateMillis = 0;
     var displayedYear = 0;
     var displayedMonth = 1;
     var todayYear = 0;
@@ -234,7 +245,7 @@
         return 'Event';
     }
 
-    function daysInMonth(month) {
+    function daysInMonthForYear(month) {
         if (!calendarData || !calendarData.months.length) return 30;
         var idx = Math.min(Math.max(month - 1, 0), calendarData.months.length - 1);
         return calendarData.months[idx].days;
@@ -265,18 +276,79 @@
         return events;
     }
 
+    function msPerDay() {
+        return 24 * 60 * 60 * 1000;
+    }
+
+    function bsDateFromMillis(millis) {
+        var remainingDays = Math.floor((millis - startDateMillis) / msPerDay());
+        var year = calendarData.year;
+        var month = 1;
+        var day = 1 + remainingDays;
+
+        var safety = 0;
+        while (day > daysInMonthForYear(month) && safety < 5000) {
+            day -= daysInMonthForYear(month);
+            month += 1;
+            if (month > 12) { month = 1; year += 1; }
+            safety++;
+        }
+        safety = 0;
+        while (day < 1 && safety < 5000) {
+            month -= 1;
+            if (month < 1) { month = 12; year -= 1; }
+            day += daysInMonthForYear(month);
+            safety++;
+        }
+
+        return { year: year, month: month, day: day };
+    }
+
+    function gregorianMillisFor(bsYear, bsMonth, bsDay) {
+        var offsetDays = 0;
+
+        if (bsYear === calendarData.year) {
+            for (var i = 0; i < calendarData.months.length; i++) {
+                var m = calendarData.months[i];
+                if (m.month < bsMonth) offsetDays += m.days;
+                else break;
+            }
+        } else if (bsYear < calendarData.year) {
+            var y = bsYear, mo = bsMonth;
+            while (y !== calendarData.year || mo !== 1) {
+                offsetDays -= daysInMonthForYear(mo);
+                mo -= 1;
+                if (mo < 1) { mo = 12; y += 1; }
+            }
+        } else {
+            var y2 = calendarData.year, mo2 = 1;
+            while (y2 !== bsYear || mo2 !== bsMonth) {
+                offsetDays += daysInMonthForYear(mo2);
+                mo2 += 1;
+                if (mo2 > 12) { mo2 = 1; y2 += 1; }
+            }
+        }
+
+        offsetDays += (bsDay - 1);
+        return startDateMillis + (offsetDays * msPerDay());
+    }
+
     function firstWeekdayOfMonth(bsYear, bsMonth) {
-        return Bridge.firstWeekdayOfMonth(bsYear, bsMonth);
+        var millis = gregorianMillisFor(bsYear, bsMonth, 1);
+        var d = new Date(millis);
+        return d.getUTCDay();
     }
 
     function engDateFor(bsYear, bsMonth, bsDay) {
-        return Bridge.engDayFor(bsYear, bsMonth, bsDay);
+        var millis = gregorianMillisFor(bsYear, bsMonth, bsDay);
+        var d = new Date(millis);
+        return d.getUTCDate().toString();
     }
 
     function renderMonth() {
         document.getElementById('monthLabel').textContent = monthName(displayedMonth) + ' ' + displayedYear;
 
-        var totalDays = daysInMonth(displayedMonth);
+        var totalDays = daysInMonthForYear(displayedMonth);
         var firstDay = firstWeekdayOfMonth(displayedYear, displayedMonth);
         var grid = document.getElementById('calendarGrid');
         grid.innerHTML = '';
@@ -337,7 +409,7 @@
         cell.onclick = function() {
             if (events.length > 0) {
                 var msg = events.map(function(e) { return typeLabel(e.type) + ': ' + e.title; }).join('\n');
-                Bridge.showToast(msg);
+                alert(msg);
             }
         };
 
@@ -395,7 +467,7 @@
         row.appendChild(chevron);
 
         row.onclick = function() {
-            Bridge.showToast(typeLabel(event.type) + ': ' + event.title);
+            alert(typeLabel(event.type) + ': ' + event.title);
         };
 
         return row;
@@ -420,23 +492,65 @@
     }
 
     function onViewAll() {
-        Bridge.onViewAllEvents();
+        alert('Full events list coming soon');
     }
 
-    function initCalendar(jsonString, tYear, tMonth, tDay) {
-        calendarData = JSON.parse(jsonString);
-        todayYear = tYear;
-        todayMonth = tMonth;
-        todayDay = tDay;
-        displayedYear = tYear;
-        displayedMonth = tMonth;
+    function showError(message) {
+        document.getElementById('monthLabel').textContent = 'Error';
+        var container = document.getElementById('eventsList');
+        container.innerHTML = '';
+        var errorDiv = document.createElement('div');
+        errorDiv.className = 'empty-events';
+        errorDiv.textContent = message;
+        container.appendChild(errorDiv);
+    }
+
+    function startCalendar() {
+        if (!calendarData || !calendarData.months || calendarData.months.length === 0) {
+            showError('Calendar data unavailable');
+            return;
+        }
+
+        var todayMillis = Date.now();
+        var today = bsDateFromMillis(todayMillis);
+        todayYear = today.year;
+        todayMonth = today.month;
+        todayDay = today.day;
+
+        displayedYear = todayYear;
+        displayedMonth = todayMonth;
 
         document.getElementById('btnPrev').classList.remove('disabled');
         document.getElementById('btnNext').classList.remove('disabled');
 
         renderMonth();
-        Bridge.onCalendarReady();
     }
+
+    function loadCalendarJson() {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', CALENDAR_JSON_URL, true);
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4) {
+                if (xhr.status === 200) {
+                    try {
+                        calendarData = JSON.parse(xhr.responseText);
+                        startDateMillis = Date.parse(calendarData.startDate + 'T00:00:00Z');
+                        startCalendar();
+                    } catch (e) {
+                        showError('Failed to parse calendar data');
+                    }
+                } else {
+                    showError('Failed to load calendar (status ' + xhr.status + ')');
+                }
+            }
+        };
+        xhr.onerror = function() {
+            showError('Network error loading calendar');
+        };
+        xhr.send();
+    }
+
+    loadCalendarJson();
 </script>
 </body>
 </html>
