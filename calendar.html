@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+        margin: 0;
+        padding: 0 0 96px 0;
+        font-family: 'Roboto', sans-serif;
+        background: #F4F6FB;
+    }
+    .header {
+        padding: 24px 20px 4px 20px;
+    }
+    .title {
+        font-family: 'LobsterFont', cursive;
+        font-size: 34px;
+        font-weight: bold;
+        color: #17223B;
+        margin: 0;
+    }
+    .subtitle {
+        font-size: 14px;
+        color: #8A93A8;
+        margin: 4px 0 0 0;
+    }
+    .card {
+        background: #FFFFFF;
+        border-radius: 20px;
+        margin: 18px 16px 0 16px;
+        box-shadow: 0 4px 10px rgba(23,34,59,0.08);
+        padding-bottom: 16px;
+        overflow: hidden;
+    }
+    .switcher {
+        display: flex;
+        align-items: center;
+        padding: 18px 10px 0 10px;
+    }
+    .switch-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #17223B;
+        font-size: 20px;
+        user-select: none;
+    }
+    .switch-btn:active { background: rgba(23,34,59,0.08); }
+    .switch-btn.disabled { opacity: 0.3; pointer-events: none; }
+    .month-label {
+        flex: 1;
+        text-align: center;
+        font-family: 'LobsterFont', cursive;
+        font-size: 19px;
+        font-weight: bold;
+        color: #17223B;
+    }
+    .weekdays {
+        display: flex;
+        padding: 16px 16px 0 16px;
+    }
+    .weekday {
+        flex: 1;
+        text-align: center;
+        font-size: 12px;
+        font-weight: bold;
+        color: #8A93A8;
+    }
+    .weekday.sat { color: #E53946; }
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        padding: 6px 8px 0 8px;
+        row-gap: 4px;
+    }
+    .cell {
+        position: relative;
+        height: 52px;
+        margin: 2px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #F4F6FB;
+        border: 1px solid #17223B22;
+        font-size: 14px;
+        font-weight: bold;
+        color: #17223B;
+    }
+    .cell.empty { background: transparent; border: none; }
+    .cell.today { background: #4C8DFF; border-color: #4C8DFF; color: #FFFFFF; }
+    .cell.holiday { background: #E5394622; border-color: #E53946; color: #E53946; }
+    .cell.saturday:not(.holiday):not(.today) { border-color: #E53946; color: #E53946; }
+    .eng-date {
+        position: absolute;
+        bottom: 3px;
+        right: 5px;
+        font-size: 9px;
+        font-weight: normal;
+        color: #8A93A8;
+    }
+    .cell.today .eng-date, .cell.holiday .eng-date, .cell.saturday .eng-date { color: inherit; opacity: 0.85; }
+    .dot {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+    }
+    .dot.holiday { background: #E53946; }
+    .dot.festival { background: #8B5CF6; }
+    .dot.event { background: #4C8DFF; }
+    .events-header {
+        display: flex;
+        align-items: center;
+        padding: 24px 20px 10px 20px;
+    }
+    .events-title {
+        flex: 1;
+        font-size: 18px;
+        font-weight: bold;
+        color: #17223B;
+    }
+    .view-all {
+        font-size: 14px;
+        font-weight: bold;
+        color: #8B5CF6;
+        padding: 6px;
+    }
+    .events-list {
+        padding: 0 20px;
+    }
+    .event-row {
+        display: flex;
+        align-items: center;
+        background: #FFFFFF;
+        border-radius: 16px;
+        padding: 14px;
+        margin-bottom: 14px;
+        box-shadow: 0 2px 6px rgba(23,34,59,0.06);
+    }
+    .event-date-box {
+        width: 52px;
+        height: 52px;
+        min-width: 52px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        color: #FFFFFF;
+        font-size: 12px;
+        font-weight: bold;
+        text-align: center;
+        margin-right: 14px;
+        line-height: 1.2;
+    }
+    .event-text { flex: 1; }
+    .event-title { font-size: 15px; font-weight: bold; color: #17223B; }
+    .event-type { font-size: 13px; font-weight: normal; margin-top: 2px; }
+    .event-chevron {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+    }
+    .empty-events {
+        font-size: 13px;
+        color: #8A93A8;
+        padding: 4px 0 16px 0;
+    }
+    .bg-holiday { background: #E53946; }
+    .bg-festival { background: #8B5CF6; }
+    .bg-event { background: #4C8DFF; }
+    .fade-holiday { background: #E5394622; color: #E53946; }
+    .fade-festival { background: #8B5CF622; color: #8B5CF6; }
+    .fade-event { background: #4C8DFF22; color: #4C8DFF; }
+    .text-holiday { color: #E53946; }
+    .text-festival { color: #8B5CF6; }
+    .text-event { color: #4C8DFF; }
+</style>
+</head>
+<body>
+
+    <div class="header">
+        <p class="title">Calendar</p>
+        <p class="subtitle">Stay organized, never miss an important day.</p>
+    </div>
+
+    <div class="card">
+        <div class="switcher">
+            <div class="switch-btn disabled" id="btnPrev" onclick="onPrevMonth()">&#10094;</div>
+            <div class="month-label" id="monthLabel">Loading...</div>
+            <div class="switch-btn disabled" id="btnNext" onclick="onNextMonth()">&#10095;</div>
+        </div>
+        <div class="weekdays">
+            <div class="weekday">Sun</div>
+            <div class="weekday">Mon</div>
+            <div class="weekday">Tue</div>
+            <div class="weekday">Wed</div>
+            <div class="weekday">Thu</div>
+            <div class="weekday">Fri</div>
+            <div class="weekday sat">Sat</div>
+        </div>
+        <div class="grid" id="calendarGrid"></div>
+    </div>
+
+    <div class="events-header">
+        <div class="events-title" id="eventsHeader">This Month's Events</div>
+        <div class="view-all" id="viewAllBtn" onclick="onViewAll()" style="display:none;">View All</div>
+    </div>
+    <div class="events-list" id="eventsList"></div>
+
+<script>
+    var calendarData = null;
+    var displayedYear = 0;
+    var displayedMonth = 1;
+    var todayYear = 0;
+    var todayMonth = 0;
+    var todayDay = 0;
+
+    function typeLabel(type) {
+        if (type === 'holiday') return 'Holiday';
+        if (type === 'festival') return 'Festival';
+        return 'Event';
+    }
+
+    function daysInMonth(month) {
+        if (!calendarData || !calendarData.months.length) return 30;
+        var idx = Math.min(Math.max(month - 1, 0), calendarData.months.length - 1);
+        return calendarData.months[idx].days;
+    }
+
+    function monthName(month) {
+        if (!calendarData || !calendarData.months.length) return 'Month ' + month;
+        var idx = Math.min(Math.max(month - 1, 0), calendarData.months.length - 1);
+        return calendarData.months[idx].name;
+    }
+
+    function eventsForDay(month, day) {
+        if (!calendarData || !calendarData.months.length) return [];
+        var idx = Math.min(Math.max(month - 1, 0), calendarData.months.length - 1);
+        var events = calendarData.months[idx].events || [];
+        var result = [];
+        for (var i = 0; i < events.length; i++) {
+            if (events[i].date === day) result.push(events[i]);
+        }
+        return result;
+    }
+
+    function eventsInMonth(month) {
+        if (!calendarData || !calendarData.months.length) return [];
+        var idx = Math.min(Math.max(month - 1, 0), calendarData.months.length - 1);
+        var events = (calendarData.months[idx].events || []).slice();
+        events.sort(function(a, b) { return a.date - b.date; });
+        return events;
+    }
+
+    function firstWeekdayOfMonth(bsYear, bsMonth) {
+        return Bridge.firstWeekdayOfMonth(bsYear, bsMonth);
+    }
+
+    function engDateFor(bsYear, bsMonth, bsDay) {
+        return Bridge.engDayFor(bsYear, bsMonth, bsDay);
+    }
+
+    function renderMonth() {
+        document.getElementById('monthLabel').textContent = monthName(displayedMonth) + ' ' + displayedYear;
+
+        var totalDays = daysInMonth(displayedMonth);
+        var firstDay = firstWeekdayOfMonth(displayedYear, displayedMonth);
+        var grid = document.getElementById('calendarGrid');
+        grid.innerHTML = '';
+
+        var totalCells = firstDay + totalDays;
+        var totalRows = Math.ceil(totalCells / 7);
+
+        var dayCounter = 1;
+        for (var r = 0; r < totalRows; r++) {
+            for (var c = 0; c < 7; c++) {
+                var cellIndex = r * 7 + c;
+                if (cellIndex < firstDay || dayCounter > totalDays) {
+                    var empty = document.createElement('div');
+                    empty.className = 'cell empty';
+                    grid.appendChild(empty);
+                } else {
+                    var day = dayCounter;
+                    var isToday = (displayedYear === todayYear && displayedMonth === todayMonth && day === todayDay);
+                    var isSaturday = (c === 6);
+                    var events = eventsForDay(displayedMonth, day);
+                    grid.appendChild(buildDayCell(day, isToday, isSaturday, events));
+                    dayCounter++;
+                }
+            }
+        }
+
+        renderEventsList();
+    }
+
+    function buildDayCell(day, isToday, isSaturday, events) {
+        var cell = document.createElement('div');
+        var holidayEvent = null;
+        for (var i = 0; i < events.length; i++) {
+            if (events[i].type === 'holiday') { holidayEvent = events[i]; break; }
+        }
+
+        var classes = 'cell';
+        if (isToday) classes += ' today';
+        else if (holidayEvent) classes += ' holiday';
+        else if (isSaturday) classes += ' saturday';
+        cell.className = classes;
+
+        var numSpan = document.createElement('span');
+        numSpan.textContent = day;
+        cell.appendChild(numSpan);
+
+        var engSpan = document.createElement('span');
+        engSpan.className = 'eng-date';
+        engSpan.textContent = engDateFor(displayedYear, displayedMonth, day);
+        cell.appendChild(engSpan);
+
+        if (events.length > 0) {
+            var dot = document.createElement('span');
+            dot.className = 'dot ' + events[0].type;
+            cell.appendChild(dot);
+        }
+
+        cell.onclick = function() {
+            if (events.length > 0) {
+                var msg = events.map(function(e) { return typeLabel(e.type) + ': ' + e.title; }).join('\n');
+                Bridge.showToast(msg);
+            }
+        };
+
+        return cell;
+    }
+
+    function renderEventsList() {
+        var container = document.getElementById('eventsList');
+        container.innerHTML = '';
+        var monthEvents = eventsInMonth(displayedMonth);
+        var viewAllBtn = document.getElementById('viewAllBtn');
+
+        document.getElementById('eventsHeader').textContent = "This Month's Events";
+
+        if (monthEvents.length === 0) {
+            viewAllBtn.style.display = 'none';
+            var empty = document.createElement('div');
+            empty.className = 'empty-events';
+            empty.textContent = 'No holidays, festivals, or events this month';
+            container.appendChild(empty);
+            return;
+        }
+
+        viewAllBtn.style.display = 'block';
+
+        for (var i = 0; i < monthEvents.length; i++) {
+            container.appendChild(buildEventRow(monthEvents[i]));
+        }
+    }
+
+    function buildEventRow(event) {
+        var row = document.createElement('div');
+        row.className = 'event-row';
+
+        var dateBox = document.createElement('div');
+        dateBox.className = 'event-date-box bg-' + event.type;
+        dateBox.innerHTML = event.date + '<br>' + monthName(displayedMonth);
+        row.appendChild(dateBox);
+
+        var textWrap = document.createElement('div');
+        textWrap.className = 'event-text';
+        var titleDiv = document.createElement('div');
+        titleDiv.className = 'event-title';
+        titleDiv.textContent = event.title;
+        var typeDiv = document.createElement('div');
+        typeDiv.className = 'event-type text-' + event.type;
+        typeDiv.textContent = typeLabel(event.type);
+        textWrap.appendChild(titleDiv);
+        textWrap.appendChild(typeDiv);
+        row.appendChild(textWrap);
+
+        var chevron = document.createElement('div');
+        chevron.className = 'event-chevron fade-' + event.type;
+        chevron.innerHTML = '&#10095;';
+        row.appendChild(chevron);
+
+        row.onclick = function() {
+            Bridge.showToast(typeLabel(event.type) + ': ' + event.title);
+        };
+
+        return row;
+    }
+
+    function onPrevMonth() {
+        displayedMonth -= 1;
+        if (displayedMonth < 1) {
+            displayedMonth = 12;
+            displayedYear -= 1;
+        }
+        renderMonth();
+    }
+
+    function onNextMonth() {
+        displayedMonth += 1;
+        if (displayedMonth > 12) {
+            displayedMonth = 1;
+            displayedYear += 1;
+        }
+        renderMonth();
+    }
+
+    function onViewAll() {
+        Bridge.onViewAllEvents();
+    }
+
+    function initCalendar(jsonString, tYear, tMonth, tDay) {
+        calendarData = JSON.parse(jsonString);
+        todayYear = tYear;
+        todayMonth = tMonth;
+        todayDay = tDay;
+        displayedYear = tYear;
+        displayedMonth = tMonth;
+
+        document.getElementById('btnPrev').classList.remove('disabled');
+        document.getElementById('btnNext').classList.remove('disabled');
+
+        renderMonth();
+        Bridge.onCalendarReady();
+    }
+</script>
+</body>
+</html>
