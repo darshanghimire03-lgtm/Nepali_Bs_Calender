@@ -140,7 +140,7 @@
     </div>
 
 <script>
-    var CALENDAR_JSON_URL = "https://raw.githubusercontent.com/darshanghimire03-lgtm/Nepali_Bs_Calender/main/2083.json";
+    var CALENDAR_JSON_FILE = "2083.json";
 
     var MONTH_NAMES = [
         "Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj",
@@ -176,13 +176,13 @@
         return MONTH_NAMES[idx];
     }
 
+    function pad2(n) {
+        return n < 10 ? '0' + n : '' + n;
+    }
+
     function entryFor(year, month, day) {
         var key = year + '-' + pad2(month) + '-' + pad2(day);
         return byNepaliDate[key] || null;
-    }
-
-    function pad2(n) {
-        return n < 10 ? '0' + n : '' + n;
     }
 
     function engDayFor(year, month, day) {
@@ -313,10 +313,10 @@
 
     function loadCalendarJson() {
         var xhr = new XMLHttpRequest();
-        xhr.open('GET', CALENDAR_JSON_URL, true);
+        xhr.open('GET', CALENDAR_JSON_FILE, true);
         xhr.onreadystatechange = function() {
             if (xhr.readyState === 4) {
-                if (xhr.status === 200) {
+                if (xhr.status === 200 || xhr.status === 0) {
                     try {
                         dateEntries = JSON.parse(xhr.responseText);
                         byNepaliDate = {};
