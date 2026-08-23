@@ -131,29 +131,43 @@
     .event-row {
         display: flex;
         align-items: center;
-        padding: 12px 16px;
+        gap: 12px;
+        padding: 14px 16px;
         border-bottom: 1px solid #17223B14;
     }
     .event-row:last-child { border-bottom: none; }
-    .event-day {
-        width: 40px;
-        height: 40px;
-        min-width: 40px;
+    .event-photo {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
         border-radius: 10px;
-        border: 1px solid #B00020;
-        color: #B00020;
-        background: #FDF1F1;
+        object-fit: cover;
+        background: #F4F6FB;
+        border: 1px solid #17223B14;
+    }
+    .event-text {
         display: flex;
         align-items: center;
-        justify-content: center;
-        font-size: 15px;
-        font-weight: bold;
-        margin-right: 14px;
+        justify-content: space-between;
+        gap: 12px;
+        flex: 1;
+        min-width: 0;
     }
     .event-title {
         font-size: 14px;
         font-weight: bold;
         color: #17223B;
+        line-height: 1.4;
+        flex: 1;
+        min-width: 0;
+    }
+    .event-day {
+        font-size: 17px;
+        font-weight: bold;
+        color: #B00020;
+        white-space: nowrap;
+        text-align: right;
+        flex-shrink: 0;
     }
     .events-empty {
         font-size: 13px;
@@ -195,16 +209,28 @@
         <div class="events-card" id="eventsCard"></div>
     </div>
 
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 <script>
-    var CALENDAR_JSON_FILE = "2083.json";
-    var HOLIDAY_JSON_FILE = "holiday.json";
-    var FESTIVAL_JSON_FILE = "festival.json";
+    var firebaseConfig = {
+        apiKey: "AIzaSyBv7MKmb2aevcaFOajr02DmBF7JNxNxIDw",
+        authDomain: "dozo-3ad6f.firebaseapp.com",
+        databaseURL: "https://dozo-3ad6f-default-rtdb.firebaseio.com",
+        projectId: "dozo-3ad6f",
+        storageBucket: "dozo-3ad6f.firebasestorage.app",
+        messagingSenderId: "843093561816",
+        appId: "1:843093561816:web:6ab6a609c0c393a50b62ad"
+    };
+    firebase.initializeApp(firebaseConfig);
+    var db = firebase.database();
 
-    // Default: Saturday(6) and Sunday(0) are holidays. Overwritten once holiday.json loads.
+    var CALENDAR_JSON_FILE = "2083.json";
+
+    // Default: Saturday(6) and Sunday(0) are holidays. Overwritten once Firebase loads.
     var weeklyHolidays = [0, 6];
 
-    // Populated once festival.json loads. Keyed by "month-day", e.g. "1-1".
-    var festivalsByMonthDay = {};
+    // Populated once Firebase festivals load. Keyed by month number, then by day number.
+    var festivalsByMonth = {};
 
     var MONTH_NAMES = [
         "Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj",
@@ -220,6 +246,8 @@
     var todayYear = 0;
     var todayMonth = 0;
     var todayDay = 0;
+
+    var calendarStarted = false;
 
     function parseNepaliDate(str) {
         var parts = str.split('-');
@@ -244,20 +272,24 @@
         return n < 10 ? '0' + n : '' + n;
     }
 
-    function festivalKey(month, day) {
-        return month + '-' + day;
-    }
-
     function festivalFor(month, day) {
-        return festivalsByMonthDay[festivalKey(month, day)] || null;
+        var monthData = festivalsByMonth[month];
+        if (!monthData) return null;
+        return monthData[day] || null;
     }
 
     function festivalsForMonth(month) {
+        var monthData = festivalsByMonth[month];
         var list = [];
-        for (var key in festivalsByMonthDay) {
-            if (!festivalsByMonthDay.hasOwnProperty(key)) continue;
-            var f = festivalsByMonthDay[key];
-            if (f.month === month) list.push(f);
+        if (!monthData) return list;
+        for (var dayKey in monthData) {
+            if (!monthData.hasOwnProperty(dayKey)) continue;
+            var entry = monthData[dayKey];
+            list.push({
+                day: parseInt(dayKey, 10),
+                title: entry.title,
+                image: entry.image || ''
+            });
         }
         list.sort(function(a, b) { return a.day - b.day; });
         return list;
@@ -356,16 +388,29 @@
             var row = document.createElement('div');
             row.className = 'event-row';
 
-            var dayBadge = document.createElement('div');
-            dayBadge.className = 'event-day';
-            dayBadge.textContent = f.day;
-            row.appendChild(dayBadge);
+            if (f.image) {
+                var photo = document.createElement('img');
+                photo.className = 'event-photo';
+                photo.src = f.image;
+                photo.alt = '';
+                photo.onerror = function() { this.style.display = 'none'; };
+                row.appendChild(photo);
+            }
+
+            var textWrap = document.createElement('div');
+            textWrap.className = 'event-text';
 
             var titleSpan = document.createElement('span');
             titleSpan.className = 'event-title';
             titleSpan.textContent = f.title;
-            row.appendChild(titleSpan);
+            textWrap.appendChild(titleSpan);
 
+            var dayBadge = document.createElement('span');
+            dayBadge.className = 'event-day';
+            dayBadge.textContent = f.day;
+            textWrap.appendChild(dayBadge);
+
+            row.appendChild(textWrap);
             eventsCard.appendChild(row);
         }
     }
@@ -407,6 +452,10 @@
     }
 
     function startCalendar() {
+        if (calendarStarted) {
+            renderMonth();
+            return;
+        }
         if (dateEntries.length === 0) {
             showError('Calendar data unavailable');
             return;
@@ -429,64 +478,11 @@
         document.getElementById('btnPrev').classList.remove('disabled');
         document.getElementById('btnNext').classList.remove('disabled');
 
+        calendarStarted = true;
         renderMonth();
     }
 
-    function loadHolidayJson(onDone) {
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', HOLIDAY_JSON_FILE, true);
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState === 4) {
-                if (xhr.status === 200 || xhr.status === 0) {
-                    try {
-                        var data = JSON.parse(xhr.responseText);
-                        if (data && Array.isArray(data.weeklyHolidays)) {
-                            weeklyHolidays = data.weeklyHolidays;
-                        }
-                    } catch (e) {
-                        // Keep default weeklyHolidays on parse failure
-                    }
-                }
-                onDone();
-            }
-        };
-        xhr.onerror = function() {
-            // Keep default weeklyHolidays if holiday.json can't be fetched
-            onDone();
-        };
-        xhr.send();
-    }
-
-    function loadFestivalJson(onDone) {
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', FESTIVAL_JSON_FILE, true);
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState === 4) {
-                if (xhr.status === 200 || xhr.status === 0) {
-                    try {
-                        var data = JSON.parse(xhr.responseText);
-                        festivalsByMonthDay = {};
-                        if (data && Array.isArray(data.festivals)) {
-                            for (var i = 0; i < data.festivals.length; i++) {
-                                var f = data.festivals[i];
-                                festivalsByMonthDay[festivalKey(f.month, f.day)] = f;
-                            }
-                        }
-                    } catch (e) {
-                        // Keep festivalsByMonthDay empty on parse failure
-                    }
-                }
-                onDone();
-            }
-        };
-        xhr.onerror = function() {
-            // Keep festivalsByMonthDay empty if festival.json can't be fetched
-            onDone();
-        };
-        xhr.send();
-    }
-
-    function loadCalendarJson() {
+    function loadCalendarJson(onDone) {
         var xhr = new XMLHttpRequest();
         xhr.open('GET', CALENDAR_JSON_FILE, true);
         xhr.onreadystatechange = function() {
@@ -498,7 +494,7 @@
                         for (var i = 0; i < dateEntries.length; i++) {
                             byNepaliDate[dateEntries[i].nepali_date] = dateEntries[i];
                         }
-                        startCalendar();
+                        onDone();
                     } catch (e) {
                         showError('Failed to parse calendar data');
                     }
@@ -513,8 +509,29 @@
         xhr.send();
     }
 
-    loadHolidayJson(function() {
-        loadFestivalJson(loadCalendarJson);
+    function listenFirebaseData() {
+        db.ref('holiday/weeklyHolidays').on('value', function(snap) {
+            var val = snap.val();
+            if (Array.isArray(val)) {
+                weeklyHolidays = val;
+            } else if (val && typeof val === 'object') {
+                var arr = [];
+                for (var k in val) {
+                    if (val.hasOwnProperty(k)) arr.push(val[k]);
+                }
+                weeklyHolidays = arr;
+            }
+            if (calendarStarted) renderMonth();
+        });
+
+        db.ref('festivals').on('value', function(snap) {
+            festivalsByMonth = snap.val() || {};
+            startCalendar();
+        });
+    }
+
+    loadCalendarJson(function() {
+        listenFirebaseData();
     });
 </script>
 </body>

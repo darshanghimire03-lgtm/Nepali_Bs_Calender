@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Calendar Admin</title>
+<style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body {
+        margin: 0;
+        padding: 0;
+        font-family: 'Roboto', sans-serif;
+        background: #F4F6FB;
+    }
+    body { padding-bottom: 76px; }
+
+    .page { display: none; }
+    .page.active { display: block; }
+
+    .header {
+        padding: 24px 20px 4px 20px;
+    }
+    .title {
+        font-size: 30px;
+        font-weight: bold;
+        color: #17223B;
+        margin: 0;
+    }
+    .subtitle {
+        font-size: 14px;
+        color: #8A93A8;
+        margin: 4px 0 0 0;
+    }
+
+    /* ---- shared card styles ---- */
+    .card {
+        background: #FFFFFF;
+        border-radius: 20px;
+        margin: 18px 16px 0 16px;
+        box-shadow: 0 4px 10px rgba(23,34,59,0.08);
+        padding-bottom: 16px;
+        overflow: hidden;
+    }
+    .switcher {
+        display: flex;
+        align-items: center;
+        padding: 18px 10px 0 10px;
+    }
+    .switch-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #17223B;
+        font-size: 20px;
+        user-select: none;
+    }
+    .switch-btn:active { background: rgba(23,34,59,0.08); }
+    .month-label {
+        flex: 1;
+        text-align: center;
+        font-size: 19px;
+        font-weight: bold;
+        color: #17223B;
+    }
+    .weekdays {
+        display: flex;
+        padding: 16px 16px 0 16px;
+    }
+    .weekday {
+        flex: 1;
+        text-align: center;
+        font-size: 12px;
+        font-weight: bold;
+        color: #8A93A8;
+    }
+    .weekday.sat { color: #E53946; }
+    .weekday.sun { color: #E53946; }
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        padding: 6px 8px 0 8px;
+        row-gap: 4px;
+    }
+    .cell {
+        position: relative;
+        height: 52px;
+        margin: 2px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #F4F6FB;
+        border: 1px solid #17223B22;
+        font-size: 14px;
+        font-weight: bold;
+        color: #17223B;
+    }
+    .cell.empty { background: transparent; border: none; }
+    .cell.today { background: #4C8DFF; border-color: #4C8DFF; color: #FFFFFF; }
+    .cell.weekend-holiday:not(.today) { background: #F4F6FB; border-color: #E53946; color: #E53946; }
+    .eng-date {
+        position: absolute;
+        bottom: 3px;
+        right: 5px;
+        font-size: 9px;
+        font-weight: normal;
+        color: #8A93A8;
+    }
+    .cell.today .eng-date, .cell.weekend-holiday .eng-date { color: inherit; opacity: 0.85; }
+    .cell.festival-day:not(.today) { background: #FDF1F1; border-color: #B00020; color: #B00020; }
+    .cell.festival-day .eng-date { color: inherit; opacity: 0.85; }
+    .loading-text {
+        font-size: 13px;
+        color: #8A93A8;
+        padding: 20px;
+        text-align: center;
+    }
+    .events-section {
+        margin: 18px 16px 0 16px;
+    }
+    .events-heading {
+        font-size: 16px;
+        font-weight: bold;
+        color: #17223B;
+        margin: 0 0 10px 4px;
+    }
+    .events-card {
+        background: #FFFFFF;
+        border-radius: 20px;
+        box-shadow: 0 4px 10px rgba(23,34,59,0.08);
+        overflow: hidden;
+    }
+    .event-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 16px;
+        border-bottom: 1px solid #17223B14;
+    }
+    .event-row:last-child { border-bottom: none; }
+    .event-photo, .list-photo {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        border-radius: 10px;
+        object-fit: cover;
+        background: #F4F6FB;
+        border: 1px solid #17223B14;
+    }
+    .event-text, .list-text {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex: 1;
+        min-width: 0;
+    }
+    .event-title, .list-title {
+        font-size: 14px;
+        font-weight: bold;
+        color: #17223B;
+        line-height: 1.4;
+        flex: 1;
+        min-width: 0;
+        word-break: break-word;
+    }
+    .event-day {
+        font-size: 17px;
+        font-weight: bold;
+        color: #B00020;
+        white-space: nowrap;
+        text-align: right;
+        flex-shrink: 0;
+    }
+    .events-empty, .list-empty {
+        font-size: 13px;
+        color: #8A93A8;
+        padding: 16px;
+        text-align: center;
+    }
+
+    /* ---- festival tab list ---- */
+    .list-section { margin: 18px 16px 0 16px; }
+    .list-card {
+        background: #FFFFFF;
+        border-radius: 20px;
+        box-shadow: 0 4px 10px rgba(23,34,59,0.08);
+        overflow: hidden;
+    }
+    .list-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 16px;
+        border-bottom: 1px solid #17223B14;
+    }
+    .list-row:last-child { border-bottom: none; }
+    .list-day {
+        font-size: 12px;
+        color: #8A93A8;
+        margin-top: 2px;
+    }
+    .list-delete {
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #B00020;
+        font-size: 16px;
+        cursor: pointer;
+        background: #FDF1F1;
+    }
+
+    /* ---- settings tab ---- */
+    .settings-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 4px;
+    }
+    .settings-row:not(:last-child) { border-bottom: 1px solid #17223B14; }
+    .settings-label {
+        font-size: 14px;
+        font-weight: bold;
+        color: #17223B;
+    }
+    .settings-desc {
+        font-size: 12px;
+        color: #8A93A8;
+        margin-top: 3px;
+    }
+    .switch {
+        position: relative;
+        width: 46px;
+        height: 26px;
+        min-width: 46px;
+        border-radius: 13px;
+        background: #DADFEA;
+        cursor: pointer;
+        transition: background 0.15s ease;
+    }
+    .switch.on { background: #4C8DFF; }
+    .switch .knob {
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #FFFFFF;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+        transition: left 0.15s ease;
+    }
+    .switch.on .knob { left: 23px; }
+    .status-text {
+        font-size: 12px;
+        text-align: center;
+        margin-top: 10px;
+        color: #8A93A8;
+        min-height: 16px;
+    }
+    .status-text.ok { color: #2E7D32; }
+    .status-text.err { color: #B00020; }
+
+    /* ---- FAB ---- */
+    .fab {
+        position: fixed;
+        right: 20px;
+        bottom: 88px;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: #4C8DFF;
+        color: #FFFFFF;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        font-size: 26px;
+        box-shadow: 0 6px 14px rgba(76,141,255,0.45);
+        cursor: pointer;
+        z-index: 40;
+    }
+    .fab.show { display: flex; }
+    .fab:active { background: #3D75E0; }
+
+    /* ---- bottom nav ---- */
+    .bottom-nav {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 64px;
+        background: #FFFFFF;
+        box-shadow: 0 -2px 10px rgba(23,34,59,0.08);
+        display: flex;
+        z-index: 30;
+    }
+    .nav-item {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        color: #8A93A8;
+        cursor: pointer;
+    }
+    .nav-item.active { color: #4C8DFF; }
+    .nav-icon { font-size: 20px; line-height: 1; }
+    .nav-label { font-size: 11px; font-weight: bold; }
+
+    /* ---- modal ---- */
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(23,34,59,0.45);
+        display: none;
+        align-items: flex-end;
+        justify-content: center;
+        z-index: 50;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal-sheet {
+        width: 100%;
+        max-width: 480px;
+        background: #FFFFFF;
+        border-radius: 24px 24px 0 0;
+        padding: 20px 20px 24px 20px;
+        max-height: 85vh;
+        overflow-y: auto;
+    }
+    .modal-title {
+        font-size: 18px;
+        font-weight: bold;
+        color: #17223B;
+        margin: 0 0 16px 0;
+    }
+    label {
+        display: block;
+        font-size: 12px;
+        font-weight: bold;
+        color: #8A93A8;
+        margin: 14px 0 6px 0;
+    }
+    label:first-of-type { margin-top: 0; }
+    input[type=text], input[type=number], select, textarea {
+        width: 100%;
+        border: 1px solid #17223B22;
+        border-radius: 12px;
+        padding: 12px 14px;
+        font-size: 14px;
+        font-family: inherit;
+        color: #17223B;
+        background: #F4F6FB;
+        outline: none;
+    }
+    textarea { resize: vertical; min-height: 60px; }
+    .row2 { display: flex; gap: 12px; }
+    .row2 > div { flex: 1; }
+    .file-btn {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border: 1px dashed #17223B33;
+        border-radius: 12px;
+        padding: 12px 14px;
+        cursor: pointer;
+        background: #F4F6FB;
+    }
+    .file-btn span.label {
+        font-size: 13px;
+        color: #8A93A8;
+        flex: 1;
+    }
+    .preview-img {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        object-fit: cover;
+        display: none;
+    }
+    input[type=file] { display: none; }
+    .modal-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 20px;
+    }
+    .btn {
+        flex: 1;
+        border: none;
+        border-radius: 14px;
+        padding: 14px;
+        font-size: 15px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    .btn-cancel {
+        background: #F4F6FB;
+        color: #17223B;
+    }
+    .btn-cancel:active { background: #E4E8F2; }
+    .btn-add {
+        background: #4C8DFF;
+        color: #FFFFFF;
+    }
+    .btn-add:active { background: #3D75E0; }
+    .btn-add:disabled { background: #A9C4F5; }
+</style>
+</head>
+<body>
+
+    <!-- ================= HOME PAGE ================= -->
+    <div class="page active" id="pageHome">
+        <div class="header">
+            <p class="title">Calendar</p>
+            <p class="subtitle">Stay organized, never miss an important day.</p>
+        </div>
+
+        <div class="card">
+            <div class="switcher">
+                <div class="switch-btn disabled" id="btnPrev" onclick="onPrevMonth()">&#10094;</div>
+                <div class="month-label" id="monthLabel">Loading...</div>
+                <div class="switch-btn disabled" id="btnNext" onclick="onNextMonth()">&#10095;</div>
+            </div>
+            <div class="weekdays">
+                <div class="weekday sun">Sun</div>
+                <div class="weekday">Mon</div>
+                <div class="weekday">Tue</div>
+                <div class="weekday">Wed</div>
+                <div class="weekday">Thu</div>
+                <div class="weekday">Fri</div>
+                <div class="weekday sat">Sat</div>
+            </div>
+            <div class="grid" id="calendarGrid">
+                <div class="loading-text" id="loadingText">Loading calendar...</div>
+            </div>
+        </div>
+
+        <div class="events-section">
+            <p class="events-heading">This month's events</p>
+            <div class="events-card" id="eventsCard"></div>
+        </div>
+    </div>
+
+    <!-- ================= FESTIVAL PAGE ================= -->
+    <div class="page" id="pageFestival">
+        <div class="header">
+            <p class="title">Festivals</p>
+            <p class="subtitle">Manage festivals month by month.</p>
+        </div>
+
+        <div class="card" style="padding-top: 4px;">
+            <div class="switcher" style="padding-top: 16px;">
+                <div class="switch-btn" onclick="shiftFestMonth(-1)">&#10094;</div>
+                <div class="month-label" id="festMonthLabel">Loading...</div>
+                <div class="switch-btn" onclick="shiftFestMonth(1)">&#10095;</div>
+            </div>
+        </div>
+
+        <div class="list-section">
+            <div class="list-card" id="listCard"></div>
+        </div>
+    </div>
+
+    <!-- ================= SETTINGS PAGE ================= -->
+    <div class="page" id="pageSettings">
+        <div class="header">
+            <p class="title">Settings</p>
+            <p class="subtitle">Configure calendar behaviour.</p>
+        </div>
+
+        <div class="card" style="padding: 6px 16px 12px 16px;">
+            <div class="settings-row">
+                <div>
+                    <div class="settings-label">Sunday is holiday</div>
+                    <div class="settings-desc">Mark every Sunday as a weekly holiday</div>
+                </div>
+                <div class="switch" id="sundaySwitch" onclick="toggleSunday()">
+                    <div class="knob"></div>
+                </div>
+            </div>
+            <div class="settings-row">
+                <div>
+                    <div class="settings-label">Saturday is holiday</div>
+                    <div class="settings-desc">Mark every Saturday as a weekly holiday</div>
+                </div>
+                <div class="switch" id="saturdaySwitch" onclick="toggleSaturday()">
+                    <div class="knob"></div>
+                </div>
+            </div>
+        </div>
+        <p class="status-text" id="holidayStatus"></p>
+    </div>
+
+    <!-- ================= FAB (festival tab only) ================= -->
+    <div class="fab" id="fab" onclick="openModal()">&#43;</div>
+
+    <!-- ================= BOTTOM NAV ================= -->
+    <div class="bottom-nav">
+        <div class="nav-item active" id="navHome" onclick="showPage('home')">
+            <div class="nav-icon">&#127968;</div>
+            <div class="nav-label">Home</div>
+        </div>
+        <div class="nav-item" id="navFestival" onclick="showPage('festival')">
+            <div class="nav-icon">&#127881;</div>
+            <div class="nav-label">Festival</div>
+        </div>
+        <div class="nav-item" id="navSettings" onclick="showPage('settings')">
+            <div class="nav-icon">&#9881;</div>
+            <div class="nav-label">Settings</div>
+        </div>
+    </div>
+
+    <!-- ================= ADD FESTIVAL MODAL ================= -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-sheet">
+            <p class="modal-title">Add Festival</p>
+
+            <div class="row2">
+                <div>
+                    <label>Day</label>
+                    <input type="number" id="inputDay" min="1" max="32" placeholder="e.g. 15">
+                </div>
+                <div>
+                    <label>Month</label>
+                    <select id="inputMonth"></select>
+                </div>
+            </div>
+
+            <label>Title</label>
+            <textarea id="inputTitle" placeholder="Festival / holiday name"></textarea>
+
+            <label>Photo (optional)</label>
+            <div class="file-btn" onclick="document.getElementById('inputFile').click()">
+                <img class="preview-img" id="previewImg">
+                <span class="label" id="fileLabel">Tap to choose an image</span>
+            </div>
+            <input type="file" id="inputFile" accept="image/*" onchange="onFileChosen(event)">
+
+            <div class="modal-actions">
+                <button class="btn btn-cancel" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-add" id="saveBtn" onclick="saveFestival()">Add</button>
+            </div>
+            <p class="status-text" id="statusText"></p>
+        </div>
+    </div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script>
+    var firebaseConfig = {
+        apiKey: "AIzaSyBv7MKmb2aevcaFOajr02DmBF7JNxNxIDw",
+        authDomain: "dozo-3ad6f.firebaseapp.com",
+        databaseURL: "https://dozo-3ad6f-default-rtdb.firebaseio.com",
+        projectId: "dozo-3ad6f",
+        storageBucket: "dozo-3ad6f.firebasestorage.app",
+        messagingSenderId: "843093561816",
+        appId: "1:843093561816:web:6ab6a609c0c393a50b62ad"
+    };
+    firebase.initializeApp(firebaseConfig);
+    var db = firebase.database();
+
+    // Get a free key at https://api.imgbb.com/ and paste it below.
+    var IMGBB_API_KEY = "3f8067ce78df06133ed7048d9dfbe892";
+
+    var MONTH_NAMES = [
+        "Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj",
+        "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"
+    ];
+
+    var CALENDAR_JSON_FILE = "2083.json";
+    var dateEntries = [];
+    var byNepaliDate = {};
+
+    var weeklyHolidays = [0, 6];
+    var festivalsByMonth = {};
+    var pendingImageBase64 = null;
+
+    /* ---------------- shared helpers ---------------- */
+    function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+
+    function parseNepaliDate(str) {
+        var parts = str.split('-');
+        return { year: parseInt(parts[0], 10), month: parseInt(parts[1], 10), day: parseInt(parts[2], 10) };
+    }
+
+    function entryFor(year, month, day) {
+        var key = year + '-' + pad2(month) + '-' + pad2(day);
+        return byNepaliDate[key] || null;
+    }
+
+    function engDayFor(year, month, day) {
+        var entry = entryFor(year, month, day);
+        if (!entry) return '';
+        var parts = entry.english_date.split('-');
+        return parseInt(parts[2], 10).toString();
+    }
+
+    function weekdayFor(year, month, day) {
+        var entry = entryFor(year, month, day);
+        if (!entry) return 0;
+        var d = new Date(entry.english_date + 'T00:00:00Z');
+        return d.getUTCDay();
+    }
+
+    function daysInMonthForYear(year, month) {
+        var count = 0;
+        for (var i = 0; i < dateEntries.length; i++) {
+            var d = parseNepaliDate(dateEntries[i].nepali_date);
+            if (d.year === year && d.month === month) count++;
+        }
+        return count;
+    }
+
+    function monthName(month) {
+        var idx = Math.min(Math.max(month - 1, 0), MONTH_NAMES.length - 1);
+        return MONTH_NAMES[idx];
+    }
+
+    function festivalFor(month, day) {
+        var monthData = festivalsByMonth[month] || festivalsByMonth[String(month)];
+        if (!monthData) return null;
+        return monthData[day] || monthData[String(day)] || null;
+    }
+
+    function festivalsForMonth(month) {
+        var monthData = festivalsByMonth[month] || festivalsByMonth[String(month)];
+        var list = [];
+        if (!monthData) return list;
+        for (var dayKey in monthData) {
+            if (!monthData.hasOwnProperty(dayKey)) continue;
+            var entry = monthData[dayKey];
+            list.push({ day: parseInt(dayKey, 10), title: entry.title, image: entry.image || '' });
+        }
+        list.sort(function(a, b) { return a.day - b.day; });
+        return list;
+    }
+
+    /* ---------------- bottom nav / pages ---------------- */
+    function showPage(name) {
+        var pages = { home: 'pageHome', festival: 'pageFestival', settings: 'pageSettings' };
+        var navs = { home: 'navHome', festival: 'navFestival', settings: 'navSettings' };
+        for (var key in pages) {
+            document.getElementById(pages[key]).classList.toggle('active', key === name);
+            document.getElementById(navs[key]).classList.toggle('active', key === name);
+        }
+        var fab = document.getElementById('fab');
+        if (name === 'festival') fab.classList.add('show');
+        else fab.classList.remove('show');
+    }
+
+    /* ================= HOME TAB (read-only calendar) ================= */
+    var displayedYear = 0;
+    var displayedMonth = 1;
+    var todayYear = 0, todayMonth = 0, todayDay = 0;
+    var calendarStarted = false;
+
+    function renderMonth() {
+        document.getElementById('monthLabel').textContent = monthName(displayedMonth) + ' ' + displayedYear;
+
+        var totalDays = daysInMonthForYear(displayedYear, displayedMonth);
+        var firstDay = weekdayFor(displayedYear, displayedMonth, 1);
+        var grid = document.getElementById('calendarGrid');
+        grid.innerHTML = '';
+
+        var totalCells = firstDay + totalDays;
+        var totalRows = Math.ceil(totalCells / 7);
+
+        var dayCounter = 1;
+        for (var r = 0; r < totalRows; r++) {
+            for (var c = 0; c < 7; c++) {
+                var cellIndex = r * 7 + c;
+                if (cellIndex < firstDay || dayCounter > totalDays) {
+                    var empty = document.createElement('div');
+                    empty.className = 'cell empty';
+                    grid.appendChild(empty);
+                } else {
+                    var day = dayCounter;
+                    var isToday = (displayedYear === todayYear && displayedMonth === todayMonth && day === todayDay);
+                    var isWeeklyHoliday = weeklyHolidays.indexOf(c) !== -1;
+                    var festival = festivalFor(displayedMonth, day);
+                    grid.appendChild(buildDayCell(day, isToday, isWeeklyHoliday, festival));
+                    dayCounter++;
+                }
+            }
+        }
+        renderMonthEvents();
+    }
+
+    function buildDayCell(day, isToday, isWeeklyHoliday, festival) {
+        var cell = document.createElement('div');
+        var classes = 'cell';
+        if (isToday) classes += ' today';
+        else if (festival) classes += ' festival-day';
+        else if (isWeeklyHoliday) classes += ' weekend-holiday';
+        cell.className = classes;
+
+        var numSpan = document.createElement('span');
+        numSpan.textContent = day;
+        cell.appendChild(numSpan);
+
+        var engSpan = document.createElement('span');
+        engSpan.className = 'eng-date';
+        engSpan.textContent = engDayFor(displayedYear, displayedMonth, day);
+        cell.appendChild(engSpan);
+
+        return cell;
+    }
+
+    function renderMonthEvents() {
+        var eventsCard = document.getElementById('eventsCard');
+        eventsCard.innerHTML = '';
+        var monthFestivals = festivalsForMonth(displayedMonth);
+
+        if (monthFestivals.length === 0) {
+            var empty = document.createElement('div');
+            empty.className = 'events-empty';
+            empty.textContent = 'No events this month';
+            eventsCard.appendChild(empty);
+            return;
+        }
+
+        for (var i = 0; i < monthFestivals.length; i++) {
+            var f = monthFestivals[i];
+            var row = document.createElement('div');
+            row.className = 'event-row';
+
+            if (f.image) {
+                var photo = document.createElement('img');
+                photo.className = 'event-photo';
+                photo.src = f.image;
+                photo.alt = '';
+                photo.onerror = function() { this.style.display = 'none'; };
+                row.appendChild(photo);
+            }
+
+            var textWrap = document.createElement('div');
+            textWrap.className = 'event-text';
+
+            var titleSpan = document.createElement('span');
+            titleSpan.className = 'event-title';
+            titleSpan.textContent = f.title;
+            textWrap.appendChild(titleSpan);
+
+            var dayBadge = document.createElement('span');
+            dayBadge.className = 'event-day';
+            dayBadge.textContent = f.day;
+            textWrap.appendChild(dayBadge);
+
+            row.appendChild(textWrap);
+            eventsCard.appendChild(row);
+        }
+    }
+
+    function onPrevMonth() {
+        displayedMonth -= 1;
+        if (displayedMonth < 1) { displayedMonth = 12; displayedYear -= 1; }
+        renderMonth();
+    }
+
+    function onNextMonth() {
+        displayedMonth += 1;
+        if (displayedMonth > 12) { displayedMonth = 1; displayedYear += 1; }
+        renderMonth();
+    }
+
+    function showError(message) {
+        document.getElementById('monthLabel').textContent = 'Error';
+        var grid = document.getElementById('calendarGrid');
+        grid.innerHTML = '';
+        var errorDiv = document.createElement('div');
+        errorDiv.className = 'loading-text';
+        errorDiv.textContent = message;
+        grid.appendChild(errorDiv);
+    }
+
+    function findTodayEntry() {
+        var todayStr = new Date().toISOString().split('T')[0];
+        for (var i = 0; i < dateEntries.length; i++) {
+            if (dateEntries[i].english_date === todayStr) return dateEntries[i];
+        }
+        return dateEntries.length > 0 ? dateEntries[0] : null;
+    }
+
+    function startCalendar() {
+        if (calendarStarted) { renderMonth(); return; }
+        if (dateEntries.length === 0) { showError('Calendar data unavailable'); return; }
+
+        var todayEntry = findTodayEntry();
+        if (!todayEntry) { showError('Calendar data unavailable'); return; }
+
+        var todayParsed = parseNepaliDate(todayEntry.nepali_date);
+        todayYear = todayParsed.year;
+        todayMonth = todayParsed.month;
+        todayDay = todayParsed.day;
+
+        displayedYear = todayYear;
+        displayedMonth = todayMonth;
+
+        document.getElementById('btnPrev').classList.remove('disabled');
+        document.getElementById('btnNext').classList.remove('disabled');
+
+        calendarStarted = true;
+        renderMonth();
+    }
+
+    /* ================= FESTIVAL TAB ================= */
+    var festCurrentMonth = 1;
+
+    function populateMonthSelect() {
+        var sel = document.getElementById('inputMonth');
+        sel.innerHTML = '';
+        for (var i = 0; i < MONTH_NAMES.length; i++) {
+            var opt = document.createElement('option');
+            opt.value = (i + 1);
+            opt.textContent = (i + 1) + ' - ' + MONTH_NAMES[i];
+            sel.appendChild(opt);
+        }
+    }
+
+    function updateFestMonthLabel() {
+        document.getElementById('festMonthLabel').textContent = monthName(festCurrentMonth) + ' (' + festCurrentMonth + ')';
+    }
+
+    function shiftFestMonth(delta) {
+        festCurrentMonth += delta;
+        if (festCurrentMonth < 1) festCurrentMonth = 12;
+        if (festCurrentMonth > 12) festCurrentMonth = 1;
+        updateFestMonthLabel();
+        renderList();
+    }
+
+    function detectCurrentNepaliMonth() {
+        var todayStr = new Date().toISOString().split('T')[0];
+        for (var i = 0; i < dateEntries.length; i++) {
+            if (dateEntries[i].english_date === todayStr) {
+                var parts = dateEntries[i].nepali_date.split('-');
+                return parseInt(parts[1], 10);
+            }
+        }
+        return 1;
+    }
+
+    function renderList() {
+        var listCard = document.getElementById('listCard');
+        listCard.innerHTML = '';
+
+        var days = festivalsForMonth(festCurrentMonth);
+
+        if (days.length === 0) {
+            var empty = document.createElement('div');
+            empty.className = 'list-empty';
+            empty.textContent = 'No festivals added for this month';
+            listCard.appendChild(empty);
+            return;
+        }
+
+        for (var i = 0; i < days.length; i++) {
+            var f = days[i];
+            var row = document.createElement('div');
+            row.className = 'list-row';
+
+            if (f.image) {
+                var photo = document.createElement('img');
+                photo.className = 'list-photo';
+                photo.src = f.image;
+                photo.onerror = function() { this.style.display = 'none'; };
+                row.appendChild(photo);
+            }
+
+            var textWrap = document.createElement('div');
+            textWrap.className = 'list-text';
+
+            var titleWrap = document.createElement('div');
+            var titleDiv = document.createElement('div');
+            titleDiv.className = 'list-title';
+            titleDiv.textContent = f.title;
+            titleWrap.appendChild(titleDiv);
+            var dayDiv = document.createElement('div');
+            dayDiv.className = 'list-day';
+            dayDiv.textContent = 'Day ' + f.day;
+            titleWrap.appendChild(dayDiv);
+            textWrap.appendChild(titleWrap);
+
+            row.appendChild(textWrap);
+
+            var delBtn = document.createElement('div');
+            delBtn.className = 'list-delete';
+            delBtn.textContent = '\u2715';
+            delBtn.onclick = (function(m, dd) {
+                return function() { deleteFestival(m, dd); };
+            })(festCurrentMonth, f.day);
+            row.appendChild(delBtn);
+
+            listCard.appendChild(row);
+        }
+    }
+
+    function deleteFestival(month, day) {
+        if (!confirm('Delete this festival?')) return;
+        db.ref('festivals/' + month + '/' + day).remove();
+    }
+
+    /* ---------------- Add Festival modal ---------------- */
+    function openModal() {
+        document.getElementById('inputMonth').value = festCurrentMonth;
+        document.getElementById('modalOverlay').classList.add('show');
+    }
+
+    function closeModal() {
+        document.getElementById('modalOverlay').classList.remove('show');
+        document.getElementById('inputDay').value = '';
+        document.getElementById('inputTitle').value = '';
+        pendingImageBase64 = null;
+        document.getElementById('previewImg').style.display = 'none';
+        document.getElementById('fileLabel').textContent = 'Tap to choose an image';
+        document.getElementById('inputFile').value = '';
+        setStatus('', '');
+    }
+
+    function onFileChosen(event) {
+        var file = event.target.files[0];
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            pendingImageBase64 = e.target.result.split(',')[1];
+            var img = document.getElementById('previewImg');
+            img.src = e.target.result;
+            img.style.display = 'block';
+            document.getElementById('fileLabel').textContent = file.name;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function uploadToImgbb(base64Data, onDone, onError) {
+        if (!IMGBB_API_KEY || IMGBB_API_KEY === 'YOUR_IMGBB_API_KEY') {
+            onError('Set IMGBB_API_KEY in admin.html first');
+            return;
+        }
+        var formData = new FormData();
+        formData.append('image', base64Data);
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', 'https://api.imgbb.com/1/upload?key=' + IMGBB_API_KEY, true);
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4) {
+                if (xhr.status === 200) {
+                    try {
+                        var res = JSON.parse(xhr.responseText);
+                        if (res.success && res.data && res.data.url) onDone(res.data.url);
+                        else onError('Upload failed');
+                    } catch (e) { onError('Upload response invalid'); }
+                } else {
+                    onError('Upload failed (status ' + xhr.status + ')');
+                }
+            }
+        };
+        xhr.onerror = function() { onError('Network error during upload'); };
+        xhr.send(formData);
+    }
+
+    function setStatus(message, kind) {
+        var el = document.getElementById('statusText');
+        el.textContent = message;
+        el.className = 'status-text' + (kind ? ' ' + kind : '');
+    }
+
+    function saveFestival() {
+        var day = parseInt(document.getElementById('inputDay').value, 10);
+        var month = parseInt(document.getElementById('inputMonth').value, 10);
+        var title = document.getElementById('inputTitle').value.trim();
+
+        if (!day || day < 1 || day > 32) { setStatus('Enter a valid day', 'err'); return; }
+        if (!title) { setStatus('Enter a title', 'err'); return; }
+
+        var btn = document.getElementById('saveBtn');
+        btn.disabled = true;
+
+        function writeEntry(imageUrl) {
+            var entry = { title: title };
+            if (imageUrl) entry.image = imageUrl;
+
+            db.ref('festivals/' + month + '/' + day).set(entry)
+                .then(function() {
+                    setStatus('Saved!', 'ok');
+                    btn.disabled = false;
+                    festCurrentMonth = month;
+                    updateFestMonthLabel();
+                    closeModal();
+                })
+                .catch(function(err) {
+                    setStatus('Save failed: ' + err.message, 'err');
+                    btn.disabled = false;
+                });
+        }
+
+        if (pendingImageBase64) {
+            setStatus('Uploading image...', '');
+            uploadToImgbb(pendingImageBase64, function(url) {
+                setStatus('Saving...', '');
+                writeEntry(url);
+            }, function(err) {
+                setStatus(err, 'err');
+                btn.disabled = false;
+            });
+        } else {
+            writeEntry(null);
+        }
+    }
+
+    /* ================= SETTINGS TAB ================= */
+    function renderHolidaySwitches() {
+        var sunOn = weeklyHolidays.indexOf(0) !== -1;
+        var satOn = weeklyHolidays.indexOf(6) !== -1;
+        document.getElementById('sundaySwitch').classList.toggle('on', sunOn);
+        document.getElementById('saturdaySwitch').classList.toggle('on', satOn);
+    }
+
+    function setHolidayStatus(message, kind) {
+        var el = document.getElementById('holidayStatus');
+        el.textContent = message;
+        el.className = 'status-text' + (kind ? ' ' + kind : '');
+    }
+
+    function toggleDayHoliday(dayIndex) {
+        var idx = weeklyHolidays.indexOf(dayIndex);
+        if (idx === -1) weeklyHolidays.push(dayIndex);
+        else weeklyHolidays.splice(idx, 1);
+
+        db.ref('holiday/weeklyHolidays').set(weeklyHolidays)
+            .then(function() {
+                setHolidayStatus('Updated', 'ok');
+                renderHolidaySwitches();
+            })
+            .catch(function(err) {
+                setHolidayStatus('Failed: ' + err.message, 'err');
+            });
+    }
+
+    function toggleSunday() { toggleDayHoliday(0); }
+    function toggleSaturday() { toggleDayHoliday(6); }
+
+    /* ================= data loading ================= */
+    function loadCalendarJson(onDone) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', CALENDAR_JSON_FILE, true);
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4) {
+                if (xhr.status === 200 || xhr.status === 0) {
+                    try {
+                        dateEntries = JSON.parse(xhr.responseText);
+                        byNepaliDate = {};
+                        for (var i = 0; i < dateEntries.length; i++) {
+                            byNepaliDate[dateEntries[i].nepali_date] = dateEntries[i];
+                        }
+                        onDone();
+                    } catch (e) {
+                        showError('Failed to parse calendar data');
+                    }
+                } else {
+                    showError('Failed to load calendar (status ' + xhr.status + ')');
+                }
+            }
+        };
+        xhr.onerror = function() { showError('Network error loading calendar'); };
+        xhr.send();
+    }
+
+    function listenFirebaseData() {
+        db.ref('holiday/weeklyHolidays').on('value', function(snap) {
+            var val = snap.val();
+            if (Array.isArray(val)) {
+                weeklyHolidays = val;
+            } else if (val && typeof val === 'object') {
+                var arr = [];
+                for (var k in val) { if (val.hasOwnProperty(k)) arr.push(val[k]); }
+                weeklyHolidays = arr;
+            } else {
+                weeklyHolidays = [0, 6];
+            }
+            renderHolidaySwitches();
+            if (calendarStarted) renderMonth();
+        });
+
+        db.ref('festivals').on('value', function(snap) {
+            festivalsByMonth = snap.val() || {};
+            startCalendar();
+            renderList();
+        });
+    }
+
+    populateMonthSelect();
+
+    loadCalendarJson(function() {
+        festCurrentMonth = detectCurrentNepaliMonth();
+        updateFestMonthLabel();
+        listenFirebaseData();
+    });
+</script>
+</body>
+</html>
