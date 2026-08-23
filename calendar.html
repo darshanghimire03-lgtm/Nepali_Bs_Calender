@@ -72,6 +72,7 @@
         color: #8A93A8;
     }
     .weekday.sat { color: #E53946; }
+    .weekday.sun { color: #E53946; }
     .grid {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
@@ -94,7 +95,7 @@
     }
     .cell.empty { background: transparent; border: none; }
     .cell.today { background: #4C8DFF; border-color: #4C8DFF; color: #FFFFFF; }
-    .cell.saturday:not(.today) { background: #F4F6FB; border-color: #E53946; color: #E53946; }
+    .cell.weekend-holiday:not(.today) { background: #F4F6FB; border-color: #E53946; color: #E53946; }
     .eng-date {
         position: absolute;
         bottom: 3px;
@@ -103,11 +104,61 @@
         font-weight: normal;
         color: #8A93A8;
     }
-    .cell.today .eng-date, .cell.saturday .eng-date { color: inherit; opacity: 0.85; }
+    .cell.today .eng-date, .cell.weekend-holiday .eng-date { color: inherit; opacity: 0.85; }
+    .cell.festival-day:not(.today) { background: #FDF1F1; border-color: #B00020; color: #B00020; }
+    .cell.festival-day .eng-date { color: inherit; opacity: 0.85; }
     .loading-text {
         font-size: 13px;
         color: #8A93A8;
         padding: 20px;
+        text-align: center;
+    }
+    .events-section {
+        margin: 18px 16px 0 16px;
+    }
+    .events-heading {
+        font-size: 16px;
+        font-weight: bold;
+        color: #17223B;
+        margin: 0 0 10px 4px;
+    }
+    .events-card {
+        background: #FFFFFF;
+        border-radius: 20px;
+        box-shadow: 0 4px 10px rgba(23,34,59,0.08);
+        overflow: hidden;
+    }
+    .event-row {
+        display: flex;
+        align-items: center;
+        padding: 12px 16px;
+        border-bottom: 1px solid #17223B14;
+    }
+    .event-row:last-child { border-bottom: none; }
+    .event-day {
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        border-radius: 10px;
+        border: 1px solid #B00020;
+        color: #B00020;
+        background: #FDF1F1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 15px;
+        font-weight: bold;
+        margin-right: 14px;
+    }
+    .event-title {
+        font-size: 14px;
+        font-weight: bold;
+        color: #17223B;
+    }
+    .events-empty {
+        font-size: 13px;
+        color: #8A93A8;
+        padding: 16px;
         text-align: center;
     }
 </style>
@@ -126,7 +177,7 @@
             <div class="switch-btn disabled" id="btnNext" onclick="onNextMonth()">&#10095;</div>
         </div>
         <div class="weekdays">
-            <div class="weekday">Sun</div>
+            <div class="weekday sun">Sun</div>
             <div class="weekday">Mon</div>
             <div class="weekday">Tue</div>
             <div class="weekday">Wed</div>
@@ -139,8 +190,21 @@
         </div>
     </div>
 
+    <div class="events-section">
+        <p class="events-heading">This month's events</p>
+        <div class="events-card" id="eventsCard"></div>
+    </div>
+
 <script>
     var CALENDAR_JSON_FILE = "2083.json";
+    var HOLIDAY_JSON_FILE = "holiday.json";
+    var FESTIVAL_JSON_FILE = "festival.json";
+
+    // Default: Saturday(6) and Sunday(0) are holidays. Overwritten once holiday.json loads.
+    var weeklyHolidays = [0, 6];
+
+    // Populated once festival.json loads. Keyed by "month-day", e.g. "1-1".
+    var festivalsByMonthDay = {};
 
     var MONTH_NAMES = [
         "Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj",
@@ -178,6 +242,25 @@
 
     function pad2(n) {
         return n < 10 ? '0' + n : '' + n;
+    }
+
+    function festivalKey(month, day) {
+        return month + '-' + day;
+    }
+
+    function festivalFor(month, day) {
+        return festivalsByMonthDay[festivalKey(month, day)] || null;
+    }
+
+    function festivalsForMonth(month) {
+        var list = [];
+        for (var key in festivalsByMonthDay) {
+            if (!festivalsByMonthDay.hasOwnProperty(key)) continue;
+            var f = festivalsByMonthDay[key];
+            if (f.month === month) list.push(f);
+        }
+        list.sort(function(a, b) { return a.day - b.day; });
+        return list;
     }
 
     function entryFor(year, month, day) {
@@ -221,20 +304,24 @@
                 } else {
                     var day = dayCounter;
                     var isToday = (displayedYear === todayYear && displayedMonth === todayMonth && day === todayDay);
-                    var isSaturday = (c === 6);
-                    grid.appendChild(buildDayCell(day, isToday, isSaturday));
+                    var isWeeklyHoliday = weeklyHolidays.indexOf(c) !== -1;
+                    var festival = festivalFor(displayedMonth, day);
+                    grid.appendChild(buildDayCell(day, isToday, isWeeklyHoliday, festival));
                     dayCounter++;
                 }
             }
         }
+
+        renderMonthEvents();
     }
 
-    function buildDayCell(day, isToday, isSaturday) {
+    function buildDayCell(day, isToday, isWeeklyHoliday, festival) {
         var cell = document.createElement('div');
 
         var classes = 'cell';
         if (isToday) classes += ' today';
-        else if (isSaturday) classes += ' saturday';
+        else if (festival) classes += ' festival-day';
+        else if (isWeeklyHoliday) classes += ' weekend-holiday';
         cell.className = classes;
 
         var numSpan = document.createElement('span');
@@ -247,6 +334,40 @@
         cell.appendChild(engSpan);
 
         return cell;
+    }
+
+    function renderMonthEvents() {
+        var eventsCard = document.getElementById('eventsCard');
+        eventsCard.innerHTML = '';
+
+        var monthFestivals = festivalsForMonth(displayedMonth);
+
+        if (monthFestivals.length === 0) {
+            var empty = document.createElement('div');
+            empty.className = 'events-empty';
+            empty.textContent = 'No events this month';
+            eventsCard.appendChild(empty);
+            return;
+        }
+
+        for (var i = 0; i < monthFestivals.length; i++) {
+            var f = monthFestivals[i];
+
+            var row = document.createElement('div');
+            row.className = 'event-row';
+
+            var dayBadge = document.createElement('div');
+            dayBadge.className = 'event-day';
+            dayBadge.textContent = f.day;
+            row.appendChild(dayBadge);
+
+            var titleSpan = document.createElement('span');
+            titleSpan.className = 'event-title';
+            titleSpan.textContent = f.title;
+            row.appendChild(titleSpan);
+
+            eventsCard.appendChild(row);
+        }
     }
 
     function onPrevMonth() {
@@ -311,6 +432,60 @@
         renderMonth();
     }
 
+    function loadHolidayJson(onDone) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', HOLIDAY_JSON_FILE, true);
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4) {
+                if (xhr.status === 200 || xhr.status === 0) {
+                    try {
+                        var data = JSON.parse(xhr.responseText);
+                        if (data && Array.isArray(data.weeklyHolidays)) {
+                            weeklyHolidays = data.weeklyHolidays;
+                        }
+                    } catch (e) {
+                        // Keep default weeklyHolidays on parse failure
+                    }
+                }
+                onDone();
+            }
+        };
+        xhr.onerror = function() {
+            // Keep default weeklyHolidays if holiday.json can't be fetched
+            onDone();
+        };
+        xhr.send();
+    }
+
+    function loadFestivalJson(onDone) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', FESTIVAL_JSON_FILE, true);
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4) {
+                if (xhr.status === 200 || xhr.status === 0) {
+                    try {
+                        var data = JSON.parse(xhr.responseText);
+                        festivalsByMonthDay = {};
+                        if (data && Array.isArray(data.festivals)) {
+                            for (var i = 0; i < data.festivals.length; i++) {
+                                var f = data.festivals[i];
+                                festivalsByMonthDay[festivalKey(f.month, f.day)] = f;
+                            }
+                        }
+                    } catch (e) {
+                        // Keep festivalsByMonthDay empty on parse failure
+                    }
+                }
+                onDone();
+            }
+        };
+        xhr.onerror = function() {
+            // Keep festivalsByMonthDay empty if festival.json can't be fetched
+            onDone();
+        };
+        xhr.send();
+    }
+
     function loadCalendarJson() {
         var xhr = new XMLHttpRequest();
         xhr.open('GET', CALENDAR_JSON_FILE, true);
@@ -338,7 +513,9 @@
         xhr.send();
     }
 
-    loadCalendarJson();
+    loadHolidayJson(function() {
+        loadFestivalJson(loadCalendarJson);
+    });
 </script>
 </body>
 </html>

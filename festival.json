@@ -1,0 +1,149 @@
+{
+  "year": 2083,
+  "festivals": [
+    {
+      "month": 1,
+      "day": 1,
+      "title": "Nepali New Year",
+      "description": "The first day of the Nepali calendar, marking the start of the new Bikram Sambat year. Celebrated with fairs, family gatherings, and cultural programs across the country."
+    },
+    {
+      "month": 1,
+      "day": 5,
+      "title": "Nepali Loshar",
+      "description": "New year celebration observed by several Himalayan and hill communities, marked with traditional food, music, and dance."
+    },
+    {
+      "month": 2,
+      "day": 15,
+      "title": "Sithi Nakha",
+      "description": "A traditional Newar festival dedicated to cleaning water sources and wells, and worshipping Kumar, the god of water and prosperity."
+    },
+    {
+      "month": 3,
+      "day": 15,
+      "title": "Ghantakarna",
+      "description": "A festival commemorating the destruction of the demon Ghantakarna, observed with effigy burning to ward off evil spirits."
+    },
+    {
+      "month": 4,
+      "day": 1,
+      "title": "Gunla Begins",
+      "description": "The start of the sacred Newar Buddhist month of Gunla, marked by daily temple visits, fasting, and traditional music processions."
+    },
+    {
+      "month": 4,
+      "day": 15,
+      "title": "Naag Panchami",
+      "description": "A day dedicated to worshipping serpent deities (Naags) for protection from snakebites and to bring good fortune and rain."
+    },
+    {
+      "month": 5,
+      "day": 12,
+      "title": "जनै पूर्णिमा / रक्षा बन्धन / पूर्णिमा व्रत / ऋषितर्पणी / क्वाति खाने दिन / संस्कृत दिवस",
+      "description": "A sacred day when Hindu men change their janai (sacred thread) and people tie a raksha bandhan thread on their wrist for protection and good health."
+    },
+    {
+      "month": 5,
+      "day": 13,
+      "title": "गाईजात्रा (काठमाडौं उपत्यका बिदा) / विश्व आणविक परिक्षण विरुद्धको दिवस",
+      "description": "A day dedicated to worshipping serpent deities (Naags) for protection from snakebites and to bring good fortune and rain."
+    },
+    {
+      "month": 5,
+      "day": 19,
+      "title": "श्रीकृष्ण जन्माष्टमी / गाैरा पर्व / गोरखकाली पूजा / दुर्वाष्टमी",
+      "description": "Celebration of the birth of Lord Krishna, observed with fasting, devotional singing, and midnight prayers at temples."
+    },
+    {
+      "month": 5,
+      "day": 29,
+      "title": "हरितालिका तीज (महिला कर्मचारीहरूलाई मात्र) / गणेश चतुर्थी व्रत / राष्ट्रिय धर्मसभा दिवस / राष्ट्रिय बाल दिवस",
+      "description": "A festival celebrated by women with fasting, singing, and dancing, praying for marital happiness and the wellbeing of their husbands and family."
+    },
+    {
+      "month": 6,
+      "day": 1,
+      "title": "Indra Jatra Begins",
+      "description": "An eight-day street festival in Kathmandu honoring Indra, the god of rain, featuring masked dances and the Living Goddess Kumari's chariot procession."
+    },
+    {
+      "month": 6,
+      "day": 18,
+      "title": "Ghatasthapana",
+      "description": "The first day of the Dashain festival, marking the ceremonial planting of barley seeds that will be used as blessings on Vijaya Dashami."
+    },
+    {
+      "month": 6,
+      "day": 27,
+      "title": "Vijaya Dashami",
+      "description": "The most important day of Dashain, when elders bless younger family members with tika and jamara, symbolizing victory of good over evil."
+    },
+    {
+      "month": 7,
+      "day": 12,
+      "title": "Laxmi Puja (Tihar)",
+      "description": "A day of the Tihar festival dedicated to worshipping Goddess Laxmi for wealth and prosperity, homes are lit with oil lamps and decorated with rangoli."
+    },
+    {
+      "month": 7,
+      "day": 15,
+      "title": "Bhai Tika",
+      "description": "The final day of Tihar celebrating the bond between brothers and sisters, with sisters applying tika and offering blessings for their brothers' long life."
+    },
+    {
+      "month": 8,
+      "day": 10,
+      "title": "Yomari Punhi",
+      "description": "A Newar harvest festival celebrated by making yomari, a steamed rice-flour delicacy filled with molasses or sesame, to give thanks for the harvest."
+    },
+    {
+      "month": 9,
+      "day": 1,
+      "title": "Udhauli Parba",
+      "description": "A harvest festival celebrated primarily by the Kirat community, marking the descent of birds and people from the hills, with traditional Sakela dance."
+    },
+    {
+      "month": 9,
+      "day": 29,
+      "title": "Maghe Sankranti",
+      "description": "A festival marking the transition of the sun into the Capricorn zodiac and the beginning of longer days, celebrated with foods like sesame sweets and sweet potatoes."
+    },
+    {
+      "month": 10,
+      "day": 1,
+      "title": "Sonam Losar",
+      "description": "New year festival celebrated by Tamang and other Himalayan communities, observed with family gatherings, traditional dances, and feasts."
+    },
+    {
+      "month": 10,
+      "day": 27,
+      "title": "Maha Shivaratri",
+      "description": "A major festival honoring Lord Shiva, marked with all-night vigils, fasting, and large gatherings of devotees at Pashupatinath Temple."
+    },
+    {
+      "month": 11,
+      "day": 1,
+      "title": "Gyalpo Losar",
+      "description": "The Tibetan new year celebrated by Sherpa and other Himalayan communities with prayers, dances, and festive family meals."
+    },
+    {
+      "month": 11,
+      "day": 15,
+      "title": "Holi (Fagu Purnima)",
+      "description": "The festival of colors celebrated with the throwing of colored powder and water, symbolizing the arrival of spring and victory of good over evil."
+    },
+    {
+      "month": 12,
+      "day": 9,
+      "title": "Ram Nawami",
+      "description": "A festival celebrating the birth of Lord Rama, observed with recitations of the Ramayana, devotional singing, and temple visits."
+    },
+    {
+      "month": 12,
+      "day": 30,
+      "title": "Chaite Dashain",
+      "description": "A smaller-scale version of Dashain celebrated in the month of Chaitra, marked by worship of Goddess Durga."
+    }
+  ]
+}
