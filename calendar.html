@@ -3,20 +3,28 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Calendar</title>
 <style>
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    body {
+    html, body {
         margin: 0;
-        padding: 0 0 96px 0;
+        padding: 0;
         font-family: 'Roboto', sans-serif;
         background: #F4F6FB;
     }
-    .header {
-        padding: 24px 20px 4px 20px;
+    body {
+        padding: 0 0 40px 0;
+        overflow-x: hidden;
     }
+    body.no-scroll {
+        overflow: hidden;
+        position: fixed;
+        width: 100%;
+        height: 100%;
+    }
+    .header { padding: 24px 20px 4px 20px; }
     .title {
-        font-family: 'LobsterFont', cursive;
-        font-size: 34px;
+        font-size: 30px;
         font-weight: bold;
         color: #17223B;
         margin: 0;
@@ -26,22 +34,23 @@
         color: #8A93A8;
         margin: 4px 0 0 0;
     }
+
+    /* ============ CALENDAR CARD ============ */
     .card {
         background: #FFFFFF;
-        border-radius: 20px;
+        border-radius: 22px;
         margin: 18px 16px 0 16px;
-        box-shadow: 0 4px 10px rgba(23,34,59,0.08);
-        padding-bottom: 16px;
+        box-shadow: 0 6px 18px rgba(23,34,59,0.08);
         overflow: hidden;
     }
     .switcher {
         display: flex;
         align-items: center;
-        padding: 18px 10px 0 10px;
+        padding: 18px 14px 4px 14px;
     }
     .switch-btn {
-        width: 36px;
-        height: 36px;
+        width: 38px;
+        height: 38px;
         border-radius: 50%;
         display: flex;
         align-items: center;
@@ -49,83 +58,240 @@
         color: #17223B;
         font-size: 20px;
         user-select: none;
+        background: #F4F6FB;
+        transition: background 0.15s ease, transform 0.15s ease;
     }
-    .switch-btn:active { background: rgba(23,34,59,0.08); }
-    .switch-btn.disabled { opacity: 0.3; pointer-events: none; }
+    .switch-btn:active {
+        background: #E4E8F2;
+        transform: scale(0.94);
+    }
+    .switch-btn.disabled { opacity: 0.35; pointer-events: none; }
     .month-label {
         flex: 1;
         text-align: center;
-        font-family: 'LobsterFont', cursive;
         font-size: 19px;
         font-weight: bold;
         color: #17223B;
+        letter-spacing: 0.2px;
     }
+    .month-label .year {
+        display: block;
+        font-size: 12px;
+        font-weight: normal;
+        color: #8A93A8;
+        margin-top: 2px;
+    }
+
     .weekdays {
         display: flex;
-        padding: 16px 16px 0 16px;
+        padding: 16px 10px 0 10px;
     }
     .weekday {
         flex: 1;
         text-align: center;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: bold;
         color: #8A93A8;
+        letter-spacing: 0.5px;
     }
-    .weekday.sat { color: #E53946; }
-    .weekday.sun { color: #E53946; }
+    .weekday.sat, .weekday.sun { color: #E53946; }
+
     .grid {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
-        padding: 6px 8px 0 8px;
-        row-gap: 4px;
+        padding: 8px 8px 14px 8px;
+        row-gap: 8px;
+    }
+
+    /* cell wrapper so badge can overflow without being clipped */
+    .cell-wrap {
+        position: relative;
+        height: 56px;
+        margin: 2px;
     }
     .cell {
-        position: relative;
-        height: 52px;
-        margin: 2px;
-        border-radius: 12px;
+        position: absolute;
+        inset: 0;
+        border-radius: 14px;
         display: flex;
         align-items: center;
         justify-content: center;
         background: #F4F6FB;
-        border: 1px solid #17223B22;
+        border: 1.5px solid transparent;
         font-size: 14px;
         font-weight: bold;
         color: #17223B;
+        cursor: pointer;
+        overflow: hidden;
+        transition: transform 0.1s ease, box-shadow 0.15s ease;
+        z-index: 1;
     }
-    .cell.empty { background: transparent; border: none; }
-    .cell.today { background: #4C8DFF; border-color: #4C8DFF; color: #FFFFFF; }
-    .cell.weekend-holiday:not(.today) { background: #F4F6FB; border-color: #E53946; color: #E53946; }
+    .cell:not(.empty):active {
+        transform: scale(0.92);
+    }
+    .cell.empty {
+        background: transparent;
+        border: none;
+        cursor: default;
+    }
+    .cell.today {
+        background: #4C8DFF;
+        color: #FFFFFF;
+        box-shadow: 0 4px 10px rgba(76,141,255,0.4);
+    }
+    .cell.weekend-holiday:not(.today) {
+        background: #F4F6FB;
+        border-color: #E53946;
+        color: #E53946;
+    }
+    .cell.festival-day:not(.today) {
+        background: linear-gradient(135deg, #FDF1F1 0%, #FCE4E4 100%);
+        border-color: #B00020;
+        color: #B00020;
+    }
+    .cell.exam-day:not(.today) {
+        background: linear-gradient(135deg, #EEF6FF 0%, #DDE9FB 100%);
+        border-color: #4C8DFF;
+        color: #1A4FBF;
+    }
+    .cell.has-events {
+        box-shadow: 0 2px 6px rgba(23,34,59,0.06);
+    }
+    .cell.today.has-events {
+        box-shadow: 0 4px 12px rgba(76,141,255,0.45);
+    }
+
+    /* festival photo as cell background */
+    .cell-bg-photo {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        opacity: 0.55;
+        z-index: 0;
+    }
+    .cell-photo-overlay {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, rgba(23,34,59,0.15) 0%, rgba(23,34,59,0.6) 100%);
+        z-index: 1;
+    }
+    .cell.has-photo .cell-num,
+    .cell.has-photo .eng-date {
+        color: #FFFFFF;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+        z-index: 3;
+        position: relative;
+    }
+    .cell.has-photo.today {
+        border-color: #4C8DFF;
+    }
+    .cell.has-photo.festival-day:not(.today) {
+        border-color: #B00020;
+    }
+
+    .cell-num {
+        z-index: 2;
+        position: relative;
+    }
+
     .eng-date {
         position: absolute;
         bottom: 3px;
-        right: 5px;
+        right: 6px;
         font-size: 9px;
         font-weight: normal;
         color: #8A93A8;
+        z-index: 2;
     }
-    .cell.today .eng-date, .cell.weekend-holiday .eng-date { color: inherit; opacity: 0.85; }
-    .cell.festival-day:not(.today) { background: #FDF1F1; border-color: #B00020; color: #B00020; }
-    .cell.festival-day .eng-date { color: inherit; opacity: 0.85; }
+    .cell.today .eng-date,
+    .cell.weekend-holiday .eng-date,
+    .cell.festival-day .eng-date,
+    .cell.exam-day .eng-date { color: inherit; opacity: 0.85; }
+
+    /* small dots row inside cell showing events */
+    .cell-dots {
+        position: absolute;
+        bottom: 4px;
+        left: 5px;
+        display: flex;
+        gap: 2.5px;
+        z-index: 3;
+    }
+    .dot {
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: #B00020;
+    }
+    .dot.exam { background: #4C8DFF; }
+    .cell.today .dot { background: #FFFFFF; }
+    .cell.today .dot.exam { background: #FFFFFF; opacity: 0.9; }
+
+    /* exam badge — now outside the .cell so it can overflow the wrapper */
+    .cell-badge {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #4C8DFF;
+        color: #FFFFFF;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 5px rgba(76,141,255,0.55);
+        border: 2px solid #FFFFFF;
+        z-index: 5;
+        pointer-events: none;
+    }
+    .cell-wrap.is-today .cell-badge {
+        background: #FFFFFF;
+        color: #4C8DFF;
+        border-color: #4C8DFF;
+    }
+    .cell-badge svg { width: 11px; height: 11px; display: block; }
+
     .loading-text {
         font-size: 13px;
         color: #8A93A8;
         padding: 20px;
         text-align: center;
+        grid-column: 1 / -1;
     }
+
+    /* ============ EVENTS SECTION ============ */
     .events-section {
-        margin: 18px 16px 0 16px;
+        margin: 22px 16px 0 16px;
+    }
+    .events-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin: 0 4px 10px 4px;
     }
     .events-heading {
         font-size: 16px;
         font-weight: bold;
         color: #17223B;
-        margin: 0 0 10px 4px;
+        margin: 0;
     }
+    .events-viewall {
+        font-size: 13px;
+        font-weight: bold;
+        color: #4C8DFF;
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 8px;
+    }
+    .events-viewall:active { background: #EEF6FF; }
+
     .events-card {
         background: #FFFFFF;
         border-radius: 20px;
-        box-shadow: 0 4px 10px rgba(23,34,59,0.08);
+        box-shadow: 0 6px 18px rgba(23,34,59,0.08);
         overflow: hidden;
     }
     .event-row {
@@ -133,18 +299,41 @@
         align-items: center;
         gap: 12px;
         padding: 14px 16px;
-        border-bottom: 1px solid #17223B14;
+        border-bottom: 1px solid #17223B0F;
+        cursor: pointer;
+        transition: background 0.12s ease;
     }
     .event-row:last-child { border-bottom: none; }
+    .event-row:active { background: #F4F6FB; }
+
     .event-photo {
         width: 44px;
         height: 44px;
         min-width: 44px;
-        border-radius: 10px;
+        border-radius: 12px;
         object-fit: cover;
         background: #F4F6FB;
         border: 1px solid #17223B14;
     }
+    .event-icon {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .event-icon.festival {
+        background: linear-gradient(135deg, #B00020 0%, #7C0016 100%);
+        box-shadow: 0 4px 10px rgba(176,0,32,0.35);
+    }
+    .event-icon.exam {
+        background: linear-gradient(135deg, #4C8DFF 0%, #2F6BE0 100%);
+        box-shadow: 0 4px 10px rgba(76,141,255,0.4);
+    }
+    .event-icon svg { width: 22px; height: 22px; display: block; }
+
     .event-text {
         display: flex;
         align-items: center;
@@ -153,13 +342,24 @@
         flex: 1;
         min-width: 0;
     }
+    .event-info {
+        flex: 1;
+        min-width: 0;
+    }
     .event-title {
         font-size: 14px;
         font-weight: bold;
         color: #17223B;
-        line-height: 1.4;
-        flex: 1;
-        min-width: 0;
+        line-height: 1.35;
+        word-break: break-word;
+    }
+    .event-sub {
+        font-size: 12px;
+        color: #8A93A8;
+        margin-top: 3px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     .event-day {
         font-size: 17px;
@@ -168,12 +368,211 @@
         white-space: nowrap;
         text-align: right;
         flex-shrink: 0;
+        padding: 4px 10px;
+        background: #FDF1F1;
+        border-radius: 10px;
+        min-width: 42px;
+    }
+    .event-day.exam {
+        color: #1A4FBF;
+        background: #EEF6FF;
     }
     .events-empty {
         font-size: 13px;
         color: #8A93A8;
-        padding: 16px;
+        padding: 24px 16px;
         text-align: center;
+    }
+
+    /* ============ DIALOGS ============ */
+    .popup-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(23,34,59,0.5);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 100;
+        padding: 20px;
+        backdrop-filter: blur(2px);
+        -webkit-backdrop-filter: blur(2px);
+    }
+    .popup-overlay.show { display: flex; }
+    .popup-card {
+        background: #FFFFFF;
+        border-radius: 22px;
+        width: 100%;
+        max-width: 380px;
+        max-height: calc(100vh - 40px);
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 16px 40px rgba(23,34,59,0.3);
+        animation: popIn 0.18s ease-out;
+        overflow: hidden;
+    }
+    @keyframes popIn {
+        from { transform: scale(0.94); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+    }
+    .popup-header {
+        padding: 22px 22px 14px 22px;
+        border-bottom: 1px solid #17223B0F;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        flex-shrink: 0;
+    }
+    .popup-header-text { flex: 1; min-width: 0; }
+    .popup-heading {
+        font-size: 11px;
+        font-weight: bold;
+        color: #8A93A8;
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+        margin: 0 0 4px 0;
+    }
+    .popup-title {
+        font-size: 20px;
+        font-weight: bold;
+        color: #17223B;
+        margin: 0;
+        word-break: break-word;
+        line-height: 1.25;
+    }
+    .popup-close-x {
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+        border-radius: 50%;
+        background: #F4F6FB;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: #17223B;
+        font-size: 15px;
+        font-weight: bold;
+    }
+    .popup-close-x:active { background: #E4E8F2; }
+
+    .popup-body {
+        padding: 6px 22px 22px 22px;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+
+    .popup-info-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 0;
+        border-bottom: 1px solid #17223B0F;
+    }
+    .popup-info-row:last-child { border-bottom: none; }
+    .popup-info-label {
+        font-size: 13px;
+        color: #8A93A8;
+    }
+    .popup-info-value {
+        font-size: 14px;
+        font-weight: bold;
+        color: #17223B;
+        text-align: right;
+        max-width: 60%;
+        word-break: break-word;
+    }
+
+    .popup-list {
+        display: flex;
+        flex-direction: column;
+    }
+    .popup-list-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 0;
+        border-bottom: 1px solid #17223B0F;
+        cursor: pointer;
+    }
+    .popup-list-item:last-child { border-bottom: none; }
+    .popup-list-item:active { background: #F4F6FB; }
+    .popup-list-text { flex: 1; min-width: 0; }
+    .popup-list-title {
+        font-size: 14px;
+        font-weight: bold;
+        color: #17223B;
+        line-height: 1.35;
+        word-break: break-word;
+    }
+    .popup-list-sub {
+        font-size: 12px;
+        color: #8A93A8;
+        margin-top: 3px;
+    }
+    .popup-list-day {
+        font-size: 13px;
+        font-weight: bold;
+        color: #B00020;
+        background: #FDF1F1;
+        padding: 5px 10px;
+        border-radius: 10px;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+    .popup-list-day.exam {
+        color: #1A4FBF;
+        background: #EEF6FF;
+    }
+
+    .popup-section-title {
+        font-size: 12px;
+        font-weight: bold;
+        color: #8A93A8;
+        letter-spacing: 0.8px;
+        text-transform: uppercase;
+        margin: 18px 0 4px 0;
+    }
+    .popup-section-title:first-child { margin-top: 6px; }
+
+    .popup-empty {
+        font-size: 13px;
+        color: #8A93A8;
+        padding: 30px 10px;
+        text-align: center;
+    }
+
+    .popup-detail-hero {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 4px 0 16px 0;
+        border-bottom: 1px solid #17223B0F;
+        margin-bottom: 6px;
+    }
+    .popup-detail-hero .event-icon,
+    .popup-detail-hero .event-photo {
+        width: 60px;
+        height: 60px;
+        min-width: 60px;
+        border-radius: 16px;
+    }
+    .popup-detail-hero .event-icon svg { width: 30px; height: 30px; }
+    .popup-detail-hero-text { flex: 1; min-width: 0; }
+    .popup-detail-hero-title {
+        font-size: 18px;
+        font-weight: bold;
+        color: #17223B;
+        line-height: 1.25;
+        word-break: break-word;
+    }
+    .popup-detail-hero-sub {
+        font-size: 12px;
+        color: #8A93A8;
+        margin-top: 4px;
     }
 </style>
 </head>
@@ -191,13 +590,13 @@
             <div class="switch-btn disabled" id="btnNext" onclick="onNextMonth()">&#10095;</div>
         </div>
         <div class="weekdays">
-            <div class="weekday sun">Sun</div>
-            <div class="weekday">Mon</div>
-            <div class="weekday">Tue</div>
-            <div class="weekday">Wed</div>
-            <div class="weekday">Thu</div>
-            <div class="weekday">Fri</div>
-            <div class="weekday sat">Sat</div>
+            <div class="weekday sun">SUN</div>
+            <div class="weekday">MON</div>
+            <div class="weekday">TUE</div>
+            <div class="weekday">WED</div>
+            <div class="weekday">THU</div>
+            <div class="weekday">FRI</div>
+            <div class="weekday sat">SAT</div>
         </div>
         <div class="grid" id="calendarGrid">
             <div class="loading-text" id="loadingText">Loading calendar...</div>
@@ -205,8 +604,53 @@
     </div>
 
     <div class="events-section">
-        <p class="events-heading">This month's events</p>
+        <div class="events-header">
+            <p class="events-heading">Upcoming events</p>
+            <span class="events-viewall" onclick="openAllEventsDialog()">View all &rsaquo;</span>
+        </div>
         <div class="events-card" id="eventsCard"></div>
+    </div>
+
+    <!-- ================= DAY EVENTS DIALOG ================= -->
+    <div class="popup-overlay" id="dayDialog" onclick="if(event.target===this)closeDayDialog()">
+        <div class="popup-card">
+            <div class="popup-header">
+                <div class="popup-header-text">
+                    <p class="popup-heading" id="dayDialogHeading">Day</p>
+                    <p class="popup-title" id="dayDialogTitle">—</p>
+                </div>
+                <div class="popup-close-x" onclick="closeDayDialog()">&#10005;</div>
+            </div>
+            <div class="popup-body" id="dayDialogBody"></div>
+        </div>
+    </div>
+
+    <!-- ================= ALL EVENTS DIALOG ================= -->
+    <div class="popup-overlay" id="allDialog" onclick="if(event.target===this)closeAllDialog()">
+        <div class="popup-card">
+            <div class="popup-header">
+                <div class="popup-header-text">
+                    <p class="popup-heading">All events</p>
+                    <p class="popup-title" id="allDialogTitle">—</p>
+                </div>
+                <div class="popup-close-x" onclick="closeAllDialog()">&#10005;</div>
+            </div>
+            <div class="popup-body" id="allDialogBody"></div>
+        </div>
+    </div>
+
+    <!-- ================= EVENT DETAIL DIALOG ================= -->
+    <div class="popup-overlay" id="detailDialog" onclick="if(event.target===this)closeDetailDialog()">
+        <div class="popup-card">
+            <div class="popup-header">
+                <div class="popup-header-text">
+                    <p class="popup-heading" id="detailDialogHeading">Event</p>
+                    <p class="popup-title" id="detailDialogTitle">—</p>
+                </div>
+                <div class="popup-close-x" onclick="closeDetailDialog()">&#10005;</div>
+            </div>
+            <div class="popup-body" id="detailDialogBody"></div>
+        </div>
     </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -226,11 +670,9 @@
 
     var CALENDAR_JSON_FILE = "2083.json";
 
-    // Default: Saturday(6) and Sunday(0) are holidays. Overwritten once Firebase loads.
     var weeklyHolidays = [0, 6];
-
-    // Populated once Firebase festivals load. Keyed by month number, then by day number.
     var festivalsByMonth = {};
+    var examsByMonth = {};
 
     var MONTH_NAMES = [
         "Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashoj",
@@ -243,11 +685,14 @@
     var displayedYear = 0;
     var displayedMonth = 1;
 
-    var todayYear = 0;
-    var todayMonth = 0;
-    var todayDay = 0;
-
+    var todayYear = 0, todayMonth = 0, todayDay = 0;
     var calendarStarted = false;
+
+    var scrollLockY = 0;
+
+    var EXAM_SVG = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-3" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><rect x="9" y="2" width="6" height="4" rx="1" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 12l2 2 4-4" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    var EXAM_BADGE_SVG = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-3" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="9" y="2" width="6" height="4" rx="1" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    var FESTIVAL_SVG = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2l1.6 4.2L18 7.5l-3.5 3.1.9 4.6L12 13l-3.4 2.2.9-4.6L6 7.5l4.4-1.3L12 2z" fill="#FFFFFF"/><circle cx="6" cy="18" r="1.6" fill="#FFFFFF"/><circle cx="12" cy="20" r="1.6" fill="#FFFFFF"/><circle cx="18" cy="18" r="1.6" fill="#FFFFFF"/></svg>';
 
     function parseNepaliDate(str) {
         var parts = str.split('-');
@@ -268,54 +713,100 @@
         return MONTH_NAMES[idx];
     }
 
-    function pad2(n) {
-        return n < 10 ? '0' + n : '' + n;
-    }
+    function pad2(n) { return n < 10 ? '0' + n : '' + n; }
 
     function festivalFor(month, day) {
-        var monthData = festivalsByMonth[month];
-        if (!monthData) return null;
-        return monthData[day] || null;
+        var m = festivalsByMonth[month] || festivalsByMonth[String(month)];
+        if (!m) return null;
+        return m[day] || m[String(day)] || null;
     }
 
     function festivalsForMonth(month) {
-        var monthData = festivalsByMonth[month];
+        var m = festivalsByMonth[month] || festivalsByMonth[String(month)];
         var list = [];
-        if (!monthData) return list;
-        for (var dayKey in monthData) {
-            if (!monthData.hasOwnProperty(dayKey)) continue;
-            var entry = monthData[dayKey];
-            list.push({
-                day: parseInt(dayKey, 10),
-                title: entry.title,
-                image: entry.image || ''
-            });
+        if (!m) return list;
+        for (var k in m) {
+            if (!m.hasOwnProperty(k)) continue;
+            list.push({ day: parseInt(k, 10), title: m[k].title, image: m[k].image || '' });
+        }
+        list.sort(function(a, b) { return a.day - b.day; });
+        return list;
+    }
+
+    function examFor(month, day) {
+        var m = examsByMonth[month] || examsByMonth[String(month)];
+        if (!m) return null;
+        return m[day] || m[String(day)] || null;
+    }
+
+    function examsForMonth(month) {
+        var m = examsByMonth[month] || examsByMonth[String(month)];
+        var list = [];
+        if (!m) return list;
+        for (var k in m) {
+            if (!m.hasOwnProperty(k)) continue;
+            list.push({ day: parseInt(k, 10), subject: m[k].subject || '', time: m[k].time || '' });
         }
         list.sort(function(a, b) { return a.day - b.day; });
         return list;
     }
 
     function entryFor(year, month, day) {
-        var key = year + '-' + pad2(month) + '-' + pad2(day);
-        return byNepaliDate[key] || null;
+        return byNepaliDate[year + '-' + pad2(month) + '-' + pad2(day)] || null;
     }
 
     function engDayFor(year, month, day) {
-        var entry = entryFor(year, month, day);
-        if (!entry) return '';
-        var parts = entry.english_date.split('-');
-        return parseInt(parts[2], 10).toString();
+        var e = entryFor(year, month, day);
+        if (!e) return '';
+        return parseInt(e.english_date.split('-')[2], 10).toString();
+    }
+
+    function engDateFull(year, month, day) {
+        var e = entryFor(year, month, day);
+        return e ? e.english_date : '';
     }
 
     function weekdayFor(year, month, day) {
-        var entry = entryFor(year, month, day);
-        if (!entry) return 0;
-        var d = new Date(entry.english_date + 'T00:00:00Z');
-        return d.getUTCDay();
+        var e = entryFor(year, month, day);
+        if (!e) return 0;
+        return new Date(e.english_date + 'T00:00:00Z').getUTCDay();
     }
 
+    function formatEngDateNice(eng) {
+        if (!eng) return '—';
+        var parts = eng.split('-');
+        if (parts.length !== 3) return eng;
+        var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        var mIdx = parseInt(parts[1], 10) - 1;
+        return parseInt(parts[2], 10) + ' ' + months[mIdx] + ' ' + parts[0];
+    }
+
+    /* Lock/unlock body scroll when dialogs open */
+    function lockBodyScroll() {
+        if (document.body.classList.contains('no-scroll')) return;
+        scrollLockY = window.scrollY || window.pageYOffset || 0;
+        document.body.style.top = '-' + scrollLockY + 'px';
+        document.body.classList.add('no-scroll');
+    }
+    function unlockBodyScroll() {
+        if (!document.body.classList.contains('no-scroll')) return;
+        document.body.classList.remove('no-scroll');
+        document.body.style.top = '';
+        window.scrollTo(0, scrollLockY);
+    }
+
+    /* Cutoff day for "upcoming" */
+    function upcomingCutoffDay() {
+        if (displayedYear === todayYear && displayedMonth === todayMonth) return todayDay;
+        if (displayedYear > todayYear) return 0;
+        if (displayedYear === todayYear && displayedMonth > todayMonth) return 0;
+        return 999;
+    }
+
+    /* ============ Render calendar ============ */
     function renderMonth() {
-        document.getElementById('monthLabel').textContent = monthName(displayedMonth) + ' ' + displayedYear;
+        var ml = document.getElementById('monthLabel');
+        ml.innerHTML = monthName(displayedMonth) + '<span class="year">' + displayedYear + '</span>';
 
         var totalDays = daysInMonthForYear(displayedYear, displayedMonth);
         var firstDay = weekdayFor(displayedYear, displayedMonth, 1);
@@ -330,33 +821,62 @@
             for (var c = 0; c < 7; c++) {
                 var cellIndex = r * 7 + c;
                 if (cellIndex < firstDay || dayCounter > totalDays) {
-                    var empty = document.createElement('div');
-                    empty.className = 'cell empty';
-                    grid.appendChild(empty);
+                    var emptyWrap = document.createElement('div');
+                    emptyWrap.className = 'cell-wrap';
+                    var emptyCell = document.createElement('div');
+                    emptyCell.className = 'cell empty';
+                    emptyWrap.appendChild(emptyCell);
+                    grid.appendChild(emptyWrap);
                 } else {
                     var day = dayCounter;
                     var isToday = (displayedYear === todayYear && displayedMonth === todayMonth && day === todayDay);
                     var isWeeklyHoliday = weeklyHolidays.indexOf(c) !== -1;
-                    var festival = festivalFor(displayedMonth, day);
-                    grid.appendChild(buildDayCell(day, isToday, isWeeklyHoliday, festival));
+                    var fest = festivalFor(displayedMonth, day);
+                    var exam = examFor(displayedMonth, day);
+                    grid.appendChild(buildDayCell(day, isToday, isWeeklyHoliday, fest, exam));
                     dayCounter++;
                 }
             }
         }
-
-        renderMonthEvents();
+        renderUpcomingEvents();
     }
 
-    function buildDayCell(day, isToday, isWeeklyHoliday, festival) {
-        var cell = document.createElement('div');
+    function buildDayCell(day, isToday, isWeeklyHoliday, festival, exam) {
+        var wrap = document.createElement('div');
+        wrap.className = 'cell-wrap';
+        if (isToday) wrap.classList.add('is-today');
 
+        var cell = document.createElement('div');
         var classes = 'cell';
         if (isToday) classes += ' today';
         else if (festival) classes += ' festival-day';
+        else if (exam) classes += ' exam-day';
         else if (isWeeklyHoliday) classes += ' weekend-holiday';
+        if (festival || exam) classes += ' has-events';
+        if (festival && festival.image) classes += ' has-photo';
         cell.className = classes;
 
+        // festival photo background
+        if (festival && festival.image) {
+            var bg = document.createElement('img');
+            bg.className = 'cell-bg-photo';
+            bg.src = festival.image;
+            bg.alt = '';
+            bg.onerror = function() {
+                this.style.display = 'none';
+                var ov = cell.querySelector('.cell-photo-overlay');
+                if (ov) ov.style.display = 'none';
+                cell.classList.remove('has-photo');
+            };
+            cell.appendChild(bg);
+
+            var ov = document.createElement('div');
+            ov.className = 'cell-photo-overlay';
+            cell.appendChild(ov);
+        }
+
         var numSpan = document.createElement('span');
+        numSpan.className = 'cell-num';
         numSpan.textContent = day;
         cell.appendChild(numSpan);
 
@@ -365,74 +885,409 @@
         engSpan.textContent = engDayFor(displayedYear, displayedMonth, day);
         cell.appendChild(engSpan);
 
-        return cell;
+        if (festival || exam) {
+            var dotsWrap = document.createElement('div');
+            dotsWrap.className = 'cell-dots';
+            if (festival) {
+                var d1 = document.createElement('div');
+                d1.className = 'dot';
+                dotsWrap.appendChild(d1);
+            }
+            if (exam) {
+                var d2 = document.createElement('div');
+                d2.className = 'dot exam';
+                dotsWrap.appendChild(d2);
+            }
+            cell.appendChild(dotsWrap);
+        }
+
+        wrap.appendChild(cell);
+
+        // exam badge placed OUTSIDE the .cell (inside .cell-wrap) so it can overflow
+        if (exam) {
+            var badge = document.createElement('div');
+            badge.className = 'cell-badge';
+            badge.innerHTML = EXAM_BADGE_SVG;
+            wrap.appendChild(badge);
+        }
+
+        wrap.onclick = (function(d) {
+            return function() { openDayDialog(d); };
+        })(day);
+
+        return wrap;
     }
 
-    function renderMonthEvents() {
-        var eventsCard = document.getElementById('eventsCard');
-        eventsCard.innerHTML = '';
+    /* ============ Upcoming events ============ */
+    function collectUpcomingEvents() {
+        var cutoff = upcomingCutoffDay();
+        var list = [];
+        var fests = festivalsForMonth(displayedMonth);
+        var exams = examsForMonth(displayedMonth);
 
-        var monthFestivals = festivalsForMonth(displayedMonth);
+        for (var i = 0; i < fests.length; i++) {
+            if (fests[i].day < cutoff) continue;
+            list.push({
+                kind: 'festival',
+                day: fests[i].day,
+                title: fests[i].title,
+                image: fests[i].image
+            });
+        }
+        for (var j = 0; j < exams.length; j++) {
+            if (exams[j].day < cutoff) continue;
+            list.push({
+                kind: 'exam',
+                day: exams[j].day,
+                title: exams[j].subject,
+                time: exams[j].time
+            });
+        }
+        list.sort(function(a, b) { return a.day - b.day; });
+        return list;
+    }
 
-        if (monthFestivals.length === 0) {
+    function renderUpcomingEvents() {
+        var card = document.getElementById('eventsCard');
+        card.innerHTML = '';
+        var all = collectUpcomingEvents();
+
+        if (all.length === 0) {
             var empty = document.createElement('div');
             empty.className = 'events-empty';
-            empty.textContent = 'No events this month';
-            eventsCard.appendChild(empty);
+            empty.textContent = 'No upcoming events';
+            card.appendChild(empty);
             return;
         }
 
-        for (var i = 0; i < monthFestivals.length; i++) {
-            var f = monthFestivals[i];
-
-            var row = document.createElement('div');
-            row.className = 'event-row';
-
-            if (f.image) {
-                var photo = document.createElement('img');
-                photo.className = 'event-photo';
-                photo.src = f.image;
-                photo.alt = '';
-                photo.onerror = function() { this.style.display = 'none'; };
-                row.appendChild(photo);
-            }
-
-            var textWrap = document.createElement('div');
-            textWrap.className = 'event-text';
-
-            var titleSpan = document.createElement('span');
-            titleSpan.className = 'event-title';
-            titleSpan.textContent = f.title;
-            textWrap.appendChild(titleSpan);
-
-            var dayBadge = document.createElement('span');
-            dayBadge.className = 'event-day';
-            dayBadge.textContent = f.day;
-            textWrap.appendChild(dayBadge);
-
-            row.appendChild(textWrap);
-            eventsCard.appendChild(row);
+        var top = all.slice(0, 3);
+        for (var i = 0; i < top.length; i++) {
+            card.appendChild(buildEventRow(top[i]));
         }
     }
 
+    function buildEventRow(ev) {
+        var row = document.createElement('div');
+        row.className = 'event-row';
+
+        if (ev.kind === 'festival') {
+            if (ev.image) {
+                var img = document.createElement('img');
+                img.className = 'event-photo';
+                img.src = ev.image;
+                img.alt = '';
+                img.onerror = function() { this.style.display = 'none'; };
+                row.appendChild(img);
+            } else {
+                var ic = document.createElement('div');
+                ic.className = 'event-icon festival';
+                ic.innerHTML = FESTIVAL_SVG;
+                row.appendChild(ic);
+            }
+        } else {
+            var ex = document.createElement('div');
+            ex.className = 'event-icon exam';
+            ex.innerHTML = EXAM_SVG;
+            row.appendChild(ex);
+        }
+
+        var textWrap = document.createElement('div');
+        textWrap.className = 'event-text';
+
+        var info = document.createElement('div');
+        info.className = 'event-info';
+        var t = document.createElement('div');
+        t.className = 'event-title';
+        t.textContent = ev.title;
+        info.appendChild(t);
+        var s = document.createElement('div');
+        s.className = 'event-sub';
+        s.textContent = (ev.kind === 'exam' ? 'Exam' : 'Festival') +
+            (ev.time ? ' • ' + ev.time : '') +
+            ' • Tap for details';
+        info.appendChild(s);
+        textWrap.appendChild(info);
+
+        var dayBadge = document.createElement('span');
+        dayBadge.className = 'event-day' + (ev.kind === 'exam' ? ' exam' : '');
+        dayBadge.textContent = ev.day;
+        textWrap.appendChild(dayBadge);
+
+        row.appendChild(textWrap);
+        row.onclick = function() { openDetailDialog(ev); };
+        return row;
+    }
+
+    /* ============ Day dialog ============ */
+    function openDayDialog(day) {
+        var fest = festivalFor(displayedMonth, day);
+        var exam = examFor(displayedMonth, day);
+
+        document.getElementById('dayDialogHeading').textContent = 'Events on';
+        document.getElementById('dayDialogTitle').textContent =
+            monthName(displayedMonth) + ' ' + day + ', ' + displayedYear;
+
+        var body = document.getElementById('dayDialogBody');
+        body.innerHTML = '';
+
+        var dateRow = document.createElement('div');
+        dateRow.className = 'popup-info-row';
+        var lbl = document.createElement('span');
+        lbl.className = 'popup-info-label';
+        lbl.textContent = 'English date';
+        dateRow.appendChild(lbl);
+        var val = document.createElement('span');
+        val.className = 'popup-info-value';
+        val.textContent = formatEngDateNice(engDateFull(displayedYear, displayedMonth, day));
+        dateRow.appendChild(val);
+        body.appendChild(dateRow);
+
+        if (!fest && !exam) {
+            var empty = document.createElement('div');
+            empty.className = 'popup-empty';
+            empty.textContent = 'No events on this day';
+            body.appendChild(empty);
+            document.getElementById('dayDialog').classList.add('show');
+            lockBodyScroll();
+            return;
+        }
+
+        var listWrap = document.createElement('div');
+        listWrap.className = 'popup-list';
+
+        if (fest) {
+            listWrap.appendChild(buildDayDialogItem({
+                kind: 'festival',
+                day: day,
+                title: fest.title,
+                image: fest.image || ''
+            }));
+        }
+        if (exam) {
+            listWrap.appendChild(buildDayDialogItem({
+                kind: 'exam',
+                day: day,
+                title: exam.subject,
+                time: exam.time
+            }));
+        }
+        body.appendChild(listWrap);
+
+        document.getElementById('dayDialog').classList.add('show');
+        lockBodyScroll();
+    }
+
+    function buildDayDialogItem(ev) {
+        var item = document.createElement('div');
+        item.className = 'popup-list-item';
+
+        if (ev.kind === 'festival') {
+            if (ev.image) {
+                var im = document.createElement('img');
+                im.className = 'event-photo';
+                im.src = ev.image;
+                im.onerror = function() { this.style.display = 'none'; };
+                item.appendChild(im);
+            } else {
+                var ic = document.createElement('div');
+                ic.className = 'event-icon festival';
+                ic.innerHTML = FESTIVAL_SVG;
+                item.appendChild(ic);
+            }
+        } else {
+            var ex = document.createElement('div');
+            ex.className = 'event-icon exam';
+            ex.innerHTML = EXAM_SVG;
+            item.appendChild(ex);
+        }
+
+        var txt = document.createElement('div');
+        txt.className = 'popup-list-text';
+        var tt = document.createElement('div');
+        tt.className = 'popup-list-title';
+        tt.textContent = ev.title;
+        txt.appendChild(tt);
+        var ss = document.createElement('div');
+        ss.className = 'popup-list-sub';
+        ss.textContent = (ev.kind === 'exam' ? 'Exam' : 'Festival') + (ev.time ? ' • ' + ev.time : '');
+        txt.appendChild(ss);
+        item.appendChild(txt);
+
+        var dg = document.createElement('div');
+        dg.className = 'popup-list-day' + (ev.kind === 'exam' ? ' exam' : '');
+        dg.textContent = ev.day;
+        item.appendChild(dg);
+
+        item.onclick = function() {
+            closeDayDialog();
+            openDetailDialog(ev);
+        };
+        return item;
+    }
+
+    function closeDayDialog() {
+        document.getElementById('dayDialog').classList.remove('show');
+        unlockBodyScroll();
+    }
+
+    /* ============ All events dialog ============ */
+    function openAllEventsDialog() {
+        document.getElementById('allDialogTitle').textContent =
+            monthName(displayedMonth) + ' ' + displayedYear;
+
+        var body = document.getElementById('allDialogBody');
+        body.innerHTML = '';
+
+        var fests = festivalsForMonth(displayedMonth);
+        var exams = examsForMonth(displayedMonth);
+
+        if (fests.length === 0 && exams.length === 0) {
+            var empty = document.createElement('div');
+            empty.className = 'popup-empty';
+            empty.textContent = 'No events this month';
+            body.appendChild(empty);
+            document.getElementById('allDialog').classList.add('show');
+            lockBodyScroll();
+            return;
+        }
+
+        if (fests.length > 0) {
+            var hF = document.createElement('div');
+            hF.className = 'popup-section-title';
+            hF.textContent = 'Festivals';
+            body.appendChild(hF);
+
+            var wrapF = document.createElement('div');
+            wrapF.className = 'popup-list';
+            for (var i = 0; i < fests.length; i++) {
+                (function(f) {
+                    wrapF.appendChild(buildDayDialogItem({
+                        kind: 'festival',
+                        day: f.day,
+                        title: f.title,
+                        image: f.image
+                    }));
+                })(fests[i]);
+            }
+            body.appendChild(wrapF);
+        }
+
+        if (exams.length > 0) {
+            var hE = document.createElement('div');
+            hE.className = 'popup-section-title';
+            hE.textContent = 'Exams';
+            body.appendChild(hE);
+
+            var wrapE = document.createElement('div');
+            wrapE.className = 'popup-list';
+            for (var j = 0; j < exams.length; j++) {
+                (function(e) {
+                    wrapE.appendChild(buildDayDialogItem({
+                        kind: 'exam',
+                        day: e.day,
+                        title: e.subject,
+                        time: e.time
+                    }));
+                })(exams[j]);
+            }
+            body.appendChild(wrapE);
+        }
+
+        document.getElementById('allDialog').classList.add('show');
+        lockBodyScroll();
+    }
+
+    function closeAllDialog() {
+        document.getElementById('allDialog').classList.remove('show');
+        unlockBodyScroll();
+    }
+
+    /* ============ Detail dialog ============ */
+    function openDetailDialog(ev) {
+        document.getElementById('detailDialogHeading').textContent =
+            ev.kind === 'exam' ? 'Exam' : 'Festival';
+        document.getElementById('detailDialogTitle').textContent = ev.title;
+
+        var body = document.getElementById('detailDialogBody');
+        body.innerHTML = '';
+
+        var hero = document.createElement('div');
+        hero.className = 'popup-detail-hero';
+
+        if (ev.kind === 'festival' && ev.image) {
+            var im = document.createElement('img');
+            im.className = 'event-photo';
+            im.src = ev.image;
+            im.onerror = function() { this.style.display = 'none'; };
+            hero.appendChild(im);
+        } else if (ev.kind === 'festival') {
+            var ic = document.createElement('div');
+            ic.className = 'event-icon festival';
+            ic.innerHTML = FESTIVAL_SVG;
+            hero.appendChild(ic);
+        } else {
+            var ex = document.createElement('div');
+            ex.className = 'event-icon exam';
+            ex.innerHTML = EXAM_SVG;
+            hero.appendChild(ex);
+        }
+
+        var heroTxt = document.createElement('div');
+        heroTxt.className = 'popup-detail-hero-text';
+        var h1 = document.createElement('div');
+        h1.className = 'popup-detail-hero-title';
+        h1.textContent = ev.title;
+        heroTxt.appendChild(h1);
+        var h2 = document.createElement('div');
+        h2.className = 'popup-detail-hero-sub';
+        h2.textContent = (ev.kind === 'exam' ? 'Exam' : 'Festival');
+        heroTxt.appendChild(h2);
+        hero.appendChild(heroTxt);
+        body.appendChild(hero);
+
+        function addRow(label, value) {
+            var r = document.createElement('div');
+            r.className = 'popup-info-row';
+            var l = document.createElement('span');
+            l.className = 'popup-info-label';
+            l.textContent = label;
+            r.appendChild(l);
+            var v = document.createElement('span');
+            v.className = 'popup-info-value';
+            v.textContent = value;
+            r.appendChild(v);
+            body.appendChild(r);
+        }
+
+        addRow('Nepali date', monthName(displayedMonth) + ' ' + ev.day + ', ' + displayedYear);
+        addRow('English date', formatEngDateNice(engDateFull(displayedYear, displayedMonth, ev.day)));
+        if (ev.kind === 'exam') {
+            addRow('Starting time', ev.time || '—');
+        }
+
+        document.getElementById('detailDialog').classList.add('show');
+        lockBodyScroll();
+    }
+
+    function closeDetailDialog() {
+        document.getElementById('detailDialog').classList.remove('show');
+        unlockBodyScroll();
+    }
+
+    /* ============ Month switching ============ */
     function onPrevMonth() {
         displayedMonth -= 1;
-        if (displayedMonth < 1) {
-            displayedMonth = 12;
-            displayedYear -= 1;
-        }
+        if (displayedMonth < 1) { displayedMonth = 12; displayedYear -= 1; }
         renderMonth();
     }
 
     function onNextMonth() {
         displayedMonth += 1;
-        if (displayedMonth > 12) {
-            displayedMonth = 1;
-            displayedYear += 1;
-        }
+        if (displayedMonth > 12) { displayedMonth = 1; displayedYear += 1; }
         renderMonth();
     }
 
+    /* ============ Data loading ============ */
     function showError(message) {
         document.getElementById('monthLabel').textContent = 'Error';
         var grid = document.getElementById('calendarGrid');
@@ -452,25 +1307,16 @@
     }
 
     function startCalendar() {
-        if (calendarStarted) {
-            renderMonth();
-            return;
-        }
-        if (dateEntries.length === 0) {
-            showError('Calendar data unavailable');
-            return;
-        }
+        if (calendarStarted) { renderMonth(); return; }
+        if (dateEntries.length === 0) { showError('Calendar data unavailable'); return; }
 
         var todayEntry = findTodayEntry();
-        if (!todayEntry) {
-            showError('Calendar data unavailable');
-            return;
-        }
+        if (!todayEntry) { showError('Calendar data unavailable'); return; }
 
-        var todayParsed = parseNepaliDate(todayEntry.nepali_date);
-        todayYear = todayParsed.year;
-        todayMonth = todayParsed.month;
-        todayDay = todayParsed.day;
+        var tp = parseNepaliDate(todayEntry.nepali_date);
+        todayYear = tp.year;
+        todayMonth = tp.month;
+        todayDay = tp.day;
 
         displayedYear = todayYear;
         displayedMonth = todayMonth;
@@ -503,9 +1349,7 @@
                 }
             }
         };
-        xhr.onerror = function() {
-            showError('Network error loading calendar');
-        };
+        xhr.onerror = function() { showError('Network error loading calendar'); };
         xhr.send();
     }
 
@@ -516,9 +1360,7 @@
                 weeklyHolidays = val;
             } else if (val && typeof val === 'object') {
                 var arr = [];
-                for (var k in val) {
-                    if (val.hasOwnProperty(k)) arr.push(val[k]);
-                }
+                for (var k in val) { if (val.hasOwnProperty(k)) arr.push(val[k]); }
                 weeklyHolidays = arr;
             }
             if (calendarStarted) renderMonth();
@@ -527,6 +1369,12 @@
         db.ref('festivals').on('value', function(snap) {
             festivalsByMonth = snap.val() || {};
             startCalendar();
+        });
+
+        db.ref('exams').on('value', function(snap) {
+            examsByMonth = snap.val() || {};
+            startCalendar();
+            if (calendarStarted) renderMonth();
         });
     }
 

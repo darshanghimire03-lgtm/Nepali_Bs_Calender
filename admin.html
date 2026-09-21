@@ -112,6 +112,8 @@
     .cell.today .eng-date, .cell.weekend-holiday .eng-date { color: inherit; opacity: 0.85; }
     .cell.festival-day:not(.today) { background: #FDF1F1; border-color: #B00020; color: #B00020; }
     .cell.festival-day .eng-date { color: inherit; opacity: 0.85; }
+    .cell.exam-day:not(.today) { background: #EEF6FF; border-color: #4C8DFF; color: #1A4FBF; }
+    .cell.exam-day .eng-date { color: inherit; opacity: 0.85; }
     .loading-text {
         font-size: 13px;
         color: #8A93A8;
@@ -349,7 +351,7 @@
         margin: 14px 0 6px 0;
     }
     label:first-of-type { margin-top: 0; }
-    input[type=text], input[type=number], select, textarea {
+    input[type=text], input[type=number], input[type=time], select, textarea {
         width: 100%;
         border: 1px solid #17223B22;
         border-radius: 12px;
@@ -468,6 +470,26 @@
         </div>
     </div>
 
+    <!-- ================= EXAM PAGE ================= -->
+    <div class="page" id="pageExam">
+        <div class="header">
+            <p class="title">Exams</p>
+            <p class="subtitle">Manage exam schedule month by month.</p>
+        </div>
+
+        <div class="card" style="padding-top: 4px;">
+            <div class="switcher" style="padding-top: 16px;">
+                <div class="switch-btn" onclick="shiftExamMonth(-1)">&#10094;</div>
+                <div class="month-label" id="examMonthLabel">Loading...</div>
+                <div class="switch-btn" onclick="shiftExamMonth(1)">&#10095;</div>
+            </div>
+        </div>
+
+        <div class="list-section">
+            <div class="list-card" id="examListCard"></div>
+        </div>
+    </div>
+
     <!-- ================= SETTINGS PAGE ================= -->
     <div class="page" id="pageSettings">
         <div class="header">
@@ -498,8 +520,8 @@
         <p class="status-text" id="holidayStatus"></p>
     </div>
 
-    <!-- ================= FAB (festival tab only) ================= -->
-    <div class="fab" id="fab" onclick="openModal()">&#43;</div>
+    <!-- ================= FAB (festival + exam tabs) ================= -->
+    <div class="fab" id="fab" onclick="onFabClick()">&#43;</div>
 
     <!-- ================= BOTTOM NAV ================= -->
     <div class="bottom-nav">
@@ -510,6 +532,10 @@
         <div class="nav-item" id="navFestival" onclick="showPage('festival')">
             <div class="nav-icon">&#127881;</div>
             <div class="nav-label">Festival</div>
+        </div>
+        <div class="nav-item" id="navExam" onclick="showPage('exam')">
+            <div class="nav-icon">&#128221;</div>
+            <div class="nav-label">Exam</div>
         </div>
         <div class="nav-item" id="navSettings" onclick="showPage('settings')">
             <div class="nav-icon">&#9881;</div>
@@ -551,6 +577,36 @@
         </div>
     </div>
 
+    <!-- ================= ADD EXAM MODAL ================= -->
+    <div class="modal-overlay" id="examModalOverlay">
+        <div class="modal-sheet">
+            <p class="modal-title">Add Exam</p>
+
+            <div class="row2">
+                <div>
+                    <label>Day</label>
+                    <input type="number" id="examInputDay" min="1" max="32" placeholder="e.g. 15">
+                </div>
+                <div>
+                    <label>Month</label>
+                    <select id="examInputMonth"></select>
+                </div>
+            </div>
+
+            <label>Subject Name</label>
+            <input type="text" id="examInputSubject" placeholder="e.g. Mathematics">
+
+            <label>Starting Time</label>
+            <input type="time" id="examInputTime" value="10:00">
+
+            <div class="modal-actions">
+                <button class="btn btn-cancel" onclick="closeExamModal()">Cancel</button>
+                <button class="btn btn-add" id="examSaveBtn" onclick="saveExam()">Add</button>
+            </div>
+            <p class="status-text" id="examStatusText"></p>
+        </div>
+    </div>
+
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 <script>
@@ -580,6 +636,7 @@
 
     var weeklyHolidays = [0, 6];
     var festivalsByMonth = {};
+    var examsByMonth = {};
     var pendingImageBase64 = null;
 
     /* ---------------- shared helpers ---------------- */
@@ -642,17 +699,48 @@
         return list;
     }
 
+    function examFor(month, day) {
+        var monthData = examsByMonth[month] || examsByMonth[String(month)];
+        if (!monthData) return null;
+        return monthData[day] || monthData[String(day)] || null;
+    }
+
+    function examsForMonth(month) {
+        var monthData = examsByMonth[month] || examsByMonth[String(month)];
+        var list = [];
+        if (!monthData) return list;
+        for (var dayKey in monthData) {
+            if (!monthData.hasOwnProperty(dayKey)) continue;
+            var entry = monthData[dayKey];
+            list.push({
+                day: parseInt(dayKey, 10),
+                subject: entry.subject || '',
+                time: entry.time || ''
+            });
+        }
+        list.sort(function(a, b) { return a.day - b.day; });
+        return list;
+    }
+
     /* ---------------- bottom nav / pages ---------------- */
     function showPage(name) {
-        var pages = { home: 'pageHome', festival: 'pageFestival', settings: 'pageSettings' };
-        var navs = { home: 'navHome', festival: 'navFestival', settings: 'navSettings' };
+        var pages = { home: 'pageHome', festival: 'pageFestival', exam: 'pageExam', settings: 'pageSettings' };
+        var navs = { home: 'navHome', festival: 'navFestival', exam: 'navExam', settings: 'navSettings' };
         for (var key in pages) {
             document.getElementById(pages[key]).classList.toggle('active', key === name);
             document.getElementById(navs[key]).classList.toggle('active', key === name);
         }
         var fab = document.getElementById('fab');
-        if (name === 'festival') fab.classList.add('show');
+        if (name === 'festival' || name === 'exam') fab.classList.add('show');
         else fab.classList.remove('show');
+    }
+
+    function onFabClick() {
+        if (document.getElementById('pageExam').classList.contains('active')) {
+            openExamModal();
+        } else {
+            openModal();
+        }
     }
 
     /* ================= HOME TAB (read-only calendar) ================= */
@@ -685,7 +773,8 @@
                     var isToday = (displayedYear === todayYear && displayedMonth === todayMonth && day === todayDay);
                     var isWeeklyHoliday = weeklyHolidays.indexOf(c) !== -1;
                     var festival = festivalFor(displayedMonth, day);
-                    grid.appendChild(buildDayCell(day, isToday, isWeeklyHoliday, festival));
+                    var exam = examFor(displayedMonth, day);
+                    grid.appendChild(buildDayCell(day, isToday, isWeeklyHoliday, festival, exam));
                     dayCounter++;
                 }
             }
@@ -693,11 +782,12 @@
         renderMonthEvents();
     }
 
-    function buildDayCell(day, isToday, isWeeklyHoliday, festival) {
+    function buildDayCell(day, isToday, isWeeklyHoliday, festival, exam) {
         var cell = document.createElement('div');
         var classes = 'cell';
         if (isToday) classes += ' today';
         else if (festival) classes += ' festival-day';
+        else if (exam) classes += ' exam-day';
         else if (isWeeklyHoliday) classes += ' weekend-holiday';
         cell.className = classes;
 
@@ -717,8 +807,9 @@
         var eventsCard = document.getElementById('eventsCard');
         eventsCard.innerHTML = '';
         var monthFestivals = festivalsForMonth(displayedMonth);
+        var monthExams = examsForMonth(displayedMonth);
 
-        if (monthFestivals.length === 0) {
+        if (monthFestivals.length === 0 && monthExams.length === 0) {
             var empty = document.createElement('div');
             empty.className = 'events-empty';
             empty.textContent = 'No events this month';
@@ -755,6 +846,29 @@
 
             row.appendChild(textWrap);
             eventsCard.appendChild(row);
+        }
+
+        for (var j = 0; j < monthExams.length; j++) {
+            var ex = monthExams[j];
+            var exRow = document.createElement('div');
+            exRow.className = 'event-row';
+
+            var exTextWrap = document.createElement('div');
+            exTextWrap.className = 'event-text';
+
+            var exTitle = document.createElement('span');
+            exTitle.className = 'event-title';
+            exTitle.textContent = '📝 ' + ex.subject + (ex.time ? '  •  ' + ex.time : '');
+            exTextWrap.appendChild(exTitle);
+
+            var exDay = document.createElement('span');
+            exDay.className = 'event-day';
+            exDay.style.color = '#1A4FBF';
+            exDay.textContent = ex.day;
+            exTextWrap.appendChild(exDay);
+
+            exRow.appendChild(exTextWrap);
+            eventsCard.appendChild(exRow);
         }
     }
 
@@ -815,6 +929,17 @@
 
     function populateMonthSelect() {
         var sel = document.getElementById('inputMonth');
+        sel.innerHTML = '';
+        for (var i = 0; i < MONTH_NAMES.length; i++) {
+            var opt = document.createElement('option');
+            opt.value = (i + 1);
+            opt.textContent = (i + 1) + ' - ' + MONTH_NAMES[i];
+            sel.appendChild(opt);
+        }
+    }
+
+    function populateExamMonthSelect() {
+        var sel = document.getElementById('examInputMonth');
         sel.innerHTML = '';
         for (var i = 0; i < MONTH_NAMES.length; i++) {
             var opt = document.createElement('option');
@@ -1014,6 +1139,119 @@
         }
     }
 
+    /* ================= EXAM TAB ================= */
+    var examCurrentMonth = 1;
+
+    function updateExamMonthLabel() {
+        document.getElementById('examMonthLabel').textContent = monthName(examCurrentMonth) + ' (' + examCurrentMonth + ')';
+    }
+
+    function shiftExamMonth(delta) {
+        examCurrentMonth += delta;
+        if (examCurrentMonth < 1) examCurrentMonth = 12;
+        if (examCurrentMonth > 12) examCurrentMonth = 1;
+        updateExamMonthLabel();
+        renderExamList();
+    }
+
+    function renderExamList() {
+        var listCard = document.getElementById('examListCard');
+        listCard.innerHTML = '';
+
+        var exams = examsForMonth(examCurrentMonth);
+
+        if (exams.length === 0) {
+            var empty = document.createElement('div');
+            empty.className = 'list-empty';
+            empty.textContent = 'No exams added for this month';
+            listCard.appendChild(empty);
+            return;
+        }
+
+        for (var i = 0; i < exams.length; i++) {
+            var ex = exams[i];
+            var row = document.createElement('div');
+            row.className = 'list-row';
+
+            var textWrap = document.createElement('div');
+            textWrap.className = 'list-text';
+
+            var titleWrap = document.createElement('div');
+            var titleDiv = document.createElement('div');
+            titleDiv.className = 'list-title';
+            titleDiv.textContent = ex.subject;
+            titleWrap.appendChild(titleDiv);
+            var dayDiv = document.createElement('div');
+            dayDiv.className = 'list-day';
+            dayDiv.textContent = 'Day ' + ex.day + (ex.time ? '  •  ' + ex.time : '');
+            titleWrap.appendChild(dayDiv);
+            textWrap.appendChild(titleWrap);
+
+            row.appendChild(textWrap);
+
+            var delBtn = document.createElement('div');
+            delBtn.className = 'list-delete';
+            delBtn.textContent = '\u2715';
+            delBtn.onclick = (function(m, dd) {
+                return function() { deleteExam(m, dd); };
+            })(examCurrentMonth, ex.day);
+            row.appendChild(delBtn);
+
+            listCard.appendChild(row);
+        }
+    }
+
+    function deleteExam(month, day) {
+        if (!confirm('Delete this exam?')) return;
+        db.ref('exams/' + month + '/' + day).remove();
+    }
+
+    function openExamModal() {
+        document.getElementById('examInputMonth').value = examCurrentMonth;
+        document.getElementById('examModalOverlay').classList.add('show');
+    }
+
+    function closeExamModal() {
+        document.getElementById('examModalOverlay').classList.remove('show');
+        document.getElementById('examInputDay').value = '';
+        document.getElementById('examInputSubject').value = '';
+        document.getElementById('examInputTime').value = '10:00';
+        setExamStatus('', '');
+    }
+
+    function setExamStatus(message, kind) {
+        var el = document.getElementById('examStatusText');
+        el.textContent = message;
+        el.className = 'status-text' + (kind ? ' ' + kind : '');
+    }
+
+    function saveExam() {
+        var day = parseInt(document.getElementById('examInputDay').value, 10);
+        var month = parseInt(document.getElementById('examInputMonth').value, 10);
+        var subject = document.getElementById('examInputSubject').value.trim();
+        var time = document.getElementById('examInputTime').value;
+
+        if (!day || day < 1 || day > 32) { setExamStatus('Enter a valid day', 'err'); return; }
+        if (!subject) { setExamStatus('Enter a subject name', 'err'); return; }
+        if (!time) { setExamStatus('Enter a starting time', 'err'); return; }
+
+        var btn = document.getElementById('examSaveBtn');
+        btn.disabled = true;
+
+        db.ref('exams/' + month + '/' + day).set({ subject: subject, time: time })
+            .then(function() {
+                setExamStatus('Saved!', 'ok');
+                btn.disabled = false;
+                examCurrentMonth = month;
+                updateExamMonthLabel();
+                closeExamModal();
+            })
+            .catch(function(err) {
+                setExamStatus('Save failed: ' + err.message, 'err');
+                btn.disabled = false;
+            });
+    }
+
     /* ================= SETTINGS TAB ================= */
     function renderHolidaySwitches() {
         var sunOn = weeklyHolidays.indexOf(0) !== -1;
@@ -1093,13 +1331,23 @@
             startCalendar();
             renderList();
         });
+
+        db.ref('exams').on('value', function(snap) {
+            examsByMonth = snap.val() || {};
+            startCalendar();
+            renderExamList();
+        });
     }
 
     populateMonthSelect();
+    populateExamMonthSelect();
 
     loadCalendarJson(function() {
-        festCurrentMonth = detectCurrentNepaliMonth();
+        var m = detectCurrentNepaliMonth();
+        festCurrentMonth = m;
+        examCurrentMonth = m;
         updateFestMonthLabel();
+        updateExamMonthLabel();
         listenFirebaseData();
     });
 </script>
